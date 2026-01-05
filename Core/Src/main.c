@@ -26,6 +26,8 @@
 #include "tmp1075.h"
 #include "cy15b256j.h"
 #include "temp_logger.h"
+#include "lem_hoys.h"
+#include "lem_config.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -193,9 +195,36 @@ int main(void)
       HAL_UART_Transmit(&huart1, fram_fail, sizeof(fram_fail)-1, 100);
   }
 
+  /* Inicializacija LEM HOYS current sensorjev */
+  uint8_t lem_msg[] = "\r\n=== LEM HOYS Current Sensors ===\r\n";
+  HAL_UART_Transmit(&huart1, lem_msg, sizeof(lem_msg)-1, 100);
+
+  if (LEM_Config_Init(&hadc1) == HAL_OK) {
+      uint8_t lem_ok[] = "LEM sensors initialized OK\r\n";
+      HAL_UART_Transmit(&huart1, lem_ok, sizeof(lem_ok)-1, 100);
+
+      // Kalibriraj vse senzorje (POMEMBNO: mora biti 0A!)
+      uint8_t cal_msg[] = "Calibrating LEM sensors (ensure 0A)...\r\n";
+      HAL_UART_Transmit(&huart1, cal_msg, sizeof(cal_msg)-1, 100);
+
+      if (LEM_Config_CalibrateAll(50) == HAL_OK) {
+          uint8_t cal_ok[] = "LEM calibration complete\r\n";
+          HAL_UART_Transmit(&huart1, cal_ok, sizeof(cal_ok)-1, 100);
+      } else {
+          uint8_t cal_fail[] = "LEM calibration FAILED!\r\n";
+          HAL_UART_Transmit(&huart1, cal_fail, sizeof(cal_fail)-1, 100);
+      }
+  } else {
+      uint8_t lem_fail[] = "LEM initialization FAILED!\r\n";
+      HAL_UART_Transmit(&huart1, lem_fail, sizeof(lem_fail)-1, 100);
+  }
+
   /* inicializacija BTT6200 modulov */
   BTT6200_Config_Init(&hadc1);   // ali &hadc, isto kot si nastavil v config.c
   BTT6200_Init(&btt6200_modules[0]);
+
+  uint8_t ready[] = "\r\n*** System Ready ***\r\n\r\n";
+  HAL_UART_Transmit(&huart1, ready, sizeof(ready)-1, 100);
 
   /* USER CODE END 2 */
 
@@ -246,6 +275,27 @@ int main(void)
 	  } else {
 	      uint8_t err[] = "Temperature read FAILED!\r\n";
 	      HAL_UART_Transmit(&huart1, err, sizeof(err)-1, 100);
+	  }
+
+	  // Preberi LEM sensorje (prikaz prvih 3 za demo)
+	  float lem_currents[3];
+	  for (uint8_t i = 0; i < 3; i++) {
+	      if (LEM_Config_ReadCurrentFiltered(i, &lem_currents[i]) == HAL_OK) {
+	          int curr_int = (int)lem_currents[i];
+	          int curr_frac = (int)(fabsf(lem_currents[i] - curr_int) * 1000);
+	          sprintf(uart_buf, "LEM_%d: %d.%03d A  ", i+1, curr_int, curr_frac);
+	          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+	      }
+	  }
+	  uint8_t newline[] = "\r\n";
+	  HAL_UART_Transmit(&huart1, newline, sizeof(newline)-1, 100);
+
+	  // Preveri overcurrent na vseh LEM senzorjih
+	  uint16_t oc_flags = 0;
+	  LEM_Config_CheckOvercurrents(&oc_flags);
+	  if (oc_flags != 0) {
+	      sprintf(uart_buf, "*** OVERCURRENT DETECTED! Flags: 0x%04X ***\r\n", oc_flags);
+	      HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 	  }
 
 	  HAL_Delay(1000);
