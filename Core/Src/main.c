@@ -24,6 +24,8 @@
 #include "btt6200_4esa.h"
 #include "btt6200_config.h"
 #include "tmp1075.h"
+#include <string.h>
+#include <stdio.h>
 
 /* USER CODE END Includes */
 
@@ -87,6 +89,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
+  char uart_buf[100];
 
   /* USER CODE END 1 */
 
@@ -115,7 +118,29 @@ int main(void)
   MX_USART1_UART_Init();
   MX_I2C2_Init();
   /* USER CODE BEGIN 2 */
-  TMP1075_Init(&htmp1075, &hi2c2, 0x48);
+
+  // Debug: Preveri I2C2 devices
+  uint8_t msg[] = "\r\n=== BMU IOC Initialization ===\r\n";
+  HAL_UART_Transmit(&huart1, msg, sizeof(msg)-1, 100);
+
+  // I2C scan za TMP1075
+  if (HAL_I2C_IsDeviceReady(&hi2c2, 0x48 << 1, 3, 100) == HAL_OK) {
+      uint8_t found[] = "TMP1075 detected at 0x48\r\n";
+      HAL_UART_Transmit(&huart1, found, sizeof(found)-1, 100);
+  } else {
+      uint8_t notfound[] = "TMP1075 NOT detected at 0x48!\r\n";
+      HAL_UART_Transmit(&huart1, notfound, sizeof(notfound)-1, 100);
+  }
+
+  // Inicializacija TMP1075
+  HAL_StatusTypeDef tmp_status = TMP1075_Init(&htmp1075, &hi2c2, 0x48);
+  if (tmp_status == HAL_OK) {
+      uint8_t init_ok[] = "TMP1075 initialized OK\r\n";
+      HAL_UART_Transmit(&huart1, init_ok, sizeof(init_ok)-1, 100);
+  } else {
+      uint8_t init_fail[] = "TMP1075 initialization FAILED!\r\n";
+      HAL_UART_Transmit(&huart1, init_fail, sizeof(init_fail)-1, 100);
+  }
 
   /* inicializacija BTT6200 modulov */
   BTT6200_Config_Init(&hadc1);   // ali &hadc, isto kot si nastavil v config.c
@@ -132,19 +157,22 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	  HAL_GPIO_WritePin(PWR_24V_EN_GPIO_Port, PWR_24V_EN_Pin, SET);
 	  HAL_GPIO_WritePin(PWR_SLEEP_GPIO_Port, PWR_SLEEP_Pin, SET);
-	//  HAL_GPIO_TogglePin(OUT0_0_GPIO_Port, OUT0_0_Pin);
-	  HAL_Delay(1000);
-	//  HAL_GPIO_WritePin(OUT0_0_GPIO_Port, OUT0_0_Pin, SET);
-	  float tC = 0.0f;
-	          if (TMP1075_ReadTemperature(&htmp1075, &tC) == HAL_OK) {
-	              // tC je temperatura v °C
-	          }
+	  HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);  // LED toggle za heartbeat
 
-	          // ali integer varianta (°C * 100)
-	          int16_t t_x100 = 0;
-	          if (TMP1075_ReadTemperature_Int(&htmp1075, &t_x100) == HAL_OK) {
-	              // npr. 2534 pomeni 25.34°C
-	          }
+	  // Preberi in izpiši temperaturo
+	  float tC = 0.0f;
+	  if (TMP1075_ReadTemperature(&htmp1075, &tC) == HAL_OK) {
+	      // Uspešno branje temperature
+	      int temp_int = (int)tC;
+	      int temp_frac = (int)((tC - temp_int) * 100);
+	      sprintf(uart_buf, "Temperature: %d.%02d C\r\n", temp_int, temp_frac);
+	      HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+	  } else {
+	      uint8_t err[] = "Temperature read FAILED!\r\n";
+	      HAL_UART_Transmit(&huart1, err, sizeof(err)-1, 100);
+	  }
+
+	  HAL_Delay(1000);
 
 	  BTT6200_SetChannel(&btt6200_modules[0], BTT6200_CH0, true);
 	  BTT6200_SetChannel(&btt6200_modules[0], BTT6200_CH1, true);
