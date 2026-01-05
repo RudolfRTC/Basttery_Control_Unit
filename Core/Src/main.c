@@ -137,6 +137,12 @@ int main(void)
   if (tmp_status == HAL_OK) {
       uint8_t init_ok[] = "TMP1075 initialized OK\r\n";
       HAL_UART_Transmit(&huart1, init_ok, sizeof(init_ok)-1, 100);
+
+      // Nastavi low temperature threshold na 0°C (alert pri < 0°C)
+      if (TMP1075_SetLowThreshold(&htmp1075, 0.0f) == HAL_OK) {
+          uint8_t thresh_ok[] = "Low threshold set to 0.0C\r\n";
+          HAL_UART_Transmit(&huart1, thresh_ok, sizeof(thresh_ok)-1, 100);
+      }
   } else {
       uint8_t init_fail[] = "TMP1075 initialization FAILED!\r\n";
       HAL_UART_Transmit(&huart1, init_fail, sizeof(init_fail)-1, 100);
@@ -165,8 +171,22 @@ int main(void)
 	      // Uspešno branje temperature
 	      int temp_int = (int)tC;
 	      int temp_frac = (int)((tC - temp_int) * 100);
-	      sprintf(uart_buf, "Temperature: %d.%02d C\r\n", temp_int, temp_frac);
-	      HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+	      if (temp_frac < 0) temp_frac = -temp_frac;  // Absolutna vrednost za decimale
+
+	      // ALERT: Temperatura pod 0°C
+	      if (tC < 0.0f) {
+	          sprintf(uart_buf, "*** ALERT! Temperature: %d.%02d C (BELOW 0C!) ***\r\n", temp_int, temp_frac);
+	          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+	          // Prižgi LED - hitro utripanje za alarm
+	          HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, SET);
+	          HAL_Delay(100);
+	          HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, RESET);
+	          HAL_Delay(100);
+	          HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, SET);
+	      } else {
+	          sprintf(uart_buf, "Temperature: %d.%02d C\r\n", temp_int, temp_frac);
+	          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+	      }
 	  } else {
 	      uint8_t err[] = "Temperature read FAILED!\r\n";
 	      HAL_UART_Transmit(&huart1, err, sizeof(err)-1, 100);
