@@ -116,7 +116,7 @@ HAL_StatusTypeDef TMP1075_ReadTemperature_Int(TMP1075_HandleTypeDef* handle,
   */
 HAL_StatusTypeDef TMP1075_WriteConfig(TMP1075_HandleTypeDef* handle)
 {
-    if (handle == NULL || !handle->is_initialized) {
+    if (handle == NULL) {
         return HAL_ERROR;
     }
 
