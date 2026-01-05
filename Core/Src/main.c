@@ -360,9 +360,18 @@ int main(void)
 	      pwr_msg.pg_5v = HAL_GPIO_ReadPin(PG_5V_GPIO_Port, PG_5V_Pin);
 	      pwr_msg.pg_3v3a = HAL_GPIO_ReadPin(PG_3V3A_GPIO_Port, PG_3V3A_Pin);
 	      pwr_msg.pwr_sleep_state = HAL_GPIO_ReadPin(PWR_SLEEP_GPIO_Port, PWR_SLEEP_Pin);
-	      // TODO: Preberi PWR_CURRENT in PWR_VOLTAGE iz ADC
-	      pwr_msg.pwr_voltage_mV = 24000;  // Placeholder
-	      pwr_msg.pwr_current_mA = 0;      // Placeholder
+
+	      /* TODO: Implement PWR_VOLTAGE and PWR_CURRENT ADC measurements
+	       * PWR_CURRENT: ADC_IN15 (PC5) - requires voltage divider circuit
+	       * PWR_VOLTAGE: Not currently configured - add ADC channel in CubeMX
+	       *
+	       * Recommended implementation:
+	       * 1. Configure ADC channels for voltage and current sensing
+	       * 2. Add voltage divider calculations based on hardware design
+	       * 3. Use moving average filter for stable readings
+	       */
+	      pwr_msg.pwr_voltage_mV = 24000U;  // Placeholder - nominal 24V
+	      pwr_msg.pwr_current_mA = 0U;      // Placeholder - implement ADC read
 	      pwr_msg.pg_24v = (pwr_msg.pwr_voltage_mV > 20000) ? 1 : 0;
 	      BMU_CAN_SendPowerSupply(&hbmucan, &pwr_msg);
 
@@ -448,8 +457,11 @@ int main(void)
 	      }
 	  }
 
+	  // ========== Main Loop Delay ==========
 	  HAL_Delay(1000);
 
+#if 0  /* TEST CODE - Disabled for production */
+	  // BTT6200 channel test sequence (enable manually for testing)
 	  BTT6200_SetChannel(&btt6200_modules[0], BTT6200_CH0, true);
 	  BTT6200_SetChannel(&btt6200_modules[0], BTT6200_CH1, true);
 	  BTT6200_SetChannel(&btt6200_modules[0], BTT6200_CH2, true);
@@ -474,9 +486,12 @@ int main(void)
 	  BTT6200_SetChannel(&btt6200_modules[4], BTT6200_CH1, true);
 	  BTT6200_SetChannel(&btt6200_modules[4], BTT6200_CH2, true);
 	  BTT6200_SetChannel(&btt6200_modules[4], BTT6200_CH3, true);
+	  uint32_t i_mA;
 	  if (BTT6200_ReadChannelCurrent(&btt6200_modules[1], BTT6200_CH1, &i_mA) == HAL_OK) {
 	      // i_mA = tok v mA (po tvoji formuli v driverju)
 	  }
+#endif  /* TEST CODE */
+
   }
   /* USER CODE END 3 */
 }
