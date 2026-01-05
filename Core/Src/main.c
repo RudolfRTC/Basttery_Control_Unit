@@ -185,12 +185,12 @@ int main(void)
           // Izpiši trenutne statistike
           TempLog_Stats_t stats;
           if (TempLogger_GetStats(&htemplogger, &stats) == HAL_OK) {
-              sprintf(uart_buf, "Stored samples: %lu, Alerts: %lu\r\n",
+              (void)snprintf(uart_buf, sizeof(uart_buf), "Stored samples: %lu, Alerts: %lu\r\n",
                       stats.sample_count, stats.alert_count);
               HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 
               if (stats.sample_count > 0) {
-                  sprintf(uart_buf, "Min: %d.%02dC, Max: %d.%02dC\r\n",
+                  (void)snprintf(uart_buf, sizeof(uart_buf), "Min: %d.%02dC, Max: %d.%02dC\r\n",
                           stats.min_temp/100, abs(stats.min_temp%100),
                           stats.max_temp/100, abs(stats.max_temp%100));
                   HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
@@ -231,7 +231,7 @@ int main(void)
   HAL_UART_Transmit(&huart1, can_msg, sizeof(can_msg)-1, 100);
 
   // Debug: Preveri CAN1 state pred inicializacijo
-  sprintf(uart_buf, "CAN1 State before init: 0x%02X\r\n", hcan1.State);
+  (void)snprintf(uart_buf, sizeof(uart_buf), "CAN1 State before init: 0x%02X\r\n", hcan1.State);
   HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 
   if (BMU_CAN_Init(&hbmucan, &hcan1, &hcan2) == HAL_OK) {
@@ -240,7 +240,7 @@ int main(void)
 
       // Debug: Preveri CAN1 error code
       uint32_t can_error = HAL_CAN_GetError(&hcan1);
-      sprintf(uart_buf, "CAN1 Error Code: 0x%08lX\r\n", can_error);
+      (void)snprintf(uart_buf, sizeof(uart_buf), "CAN1 Error Code: 0x%08lX\r\n", can_error);
       HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
   } else {
       uint8_t can_fail[] = "CAN initialization FAILED!\r\n";
@@ -248,9 +248,9 @@ int main(void)
 
       // Debug: Izpiši error code
       uint32_t can_error = HAL_CAN_GetError(&hcan1);
-      sprintf(uart_buf, "CAN1 Error Code: 0x%08lX\r\n", can_error);
+      (void)snprintf(uart_buf, sizeof(uart_buf), "CAN1 Error Code: 0x%08lX\r\n", can_error);
       HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
-      sprintf(uart_buf, "CAN1 State: 0x%02X\r\n", hcan1.State);
+      (void)snprintf(uart_buf, sizeof(uart_buf), "CAN1 State: 0x%02X\r\n", hcan1.State);
       HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
   }
 
@@ -301,7 +301,7 @@ int main(void)
 
 	      // ALERT: Temperatura pod 0°C
 	      if (is_alert) {
-	          sprintf(uart_buf, "*** ALERT! Temperature: %d.%02d C (BELOW 0C!) ***\r\n", temp_int, temp_frac);
+	          (void)snprintf(uart_buf, sizeof(uart_buf), "*** ALERT! Temperature: %d.%02d C (BELOW 0C!) ***\r\n", temp_int, temp_frac);
 	          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 	          // Prižgi LED - hitro utripanje za alarm
 	          HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, SET);
@@ -310,7 +310,7 @@ int main(void)
 	          HAL_Delay(100);
 	          HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, SET);
 	      } else {
-	          sprintf(uart_buf, "Temperature: %d.%02d C\r\n", temp_int, temp_frac);
+	          (void)snprintf(uart_buf, sizeof(uart_buf), "Temperature: %d.%02d C\r\n", temp_int, temp_frac);
 	          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 	      }
 	  } else {
@@ -324,7 +324,7 @@ int main(void)
 	      if (LEM_Config_ReadCurrentFiltered(i, &lem_currents[i]) == HAL_OK) {
 	          int curr_int = (int)lem_currents[i];
 	          int curr_frac = (int)(fabsf(lem_currents[i] - curr_int) * 1000);
-	          sprintf(uart_buf, "LEM_%d: %d.%03d A  ", i+1, curr_int, curr_frac);
+	          (void)snprintf(uart_buf, sizeof(uart_buf), "LEM_%d: %d.%03d A  ", i+1, curr_int, curr_frac);
 	          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 	      }
 	  }
@@ -335,7 +335,7 @@ int main(void)
 	  uint16_t oc_flags = 0;
 	  LEM_Config_CheckOvercurrents(&oc_flags);
 	  if (oc_flags != 0) {
-	      sprintf(uart_buf, "*** OVERCURRENT DETECTED! Flags: 0x%04X ***\r\n", oc_flags);
+	      (void)snprintf(uart_buf, sizeof(uart_buf), "*** OVERCURRENT DETECTED! Flags: 0x%04X ***\r\n", oc_flags);
 	      HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 	  }
 
@@ -443,7 +443,7 @@ int main(void)
 	      if (can_heartbeat_counter % 10 == 0) {
 	          uint32_t tx_count, rx_count, err_count;
 	          BMU_CAN_GetStats(&hbmucan, &tx_count, &rx_count, &err_count);
-	          sprintf(uart_buf, "[CAN] TX:%lu RX:%lu ERR:%lu\r\n", tx_count, rx_count, err_count);
+	          (void)snprintf(uart_buf, sizeof(uart_buf), "[CAN] TX:%lu RX:%lu ERR:%lu\r\n", tx_count, rx_count, err_count);
 	          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 	      }
 	  }

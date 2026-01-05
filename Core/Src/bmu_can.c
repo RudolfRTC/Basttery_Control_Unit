@@ -11,9 +11,12 @@
 #include <string.h>
 
 /* Private defines -----------------------------------------------------------*/
+#define BMU_HEARTBEAT_MAGIC_BYTE1  0xBEU
+#define BMU_HEARTBEAT_MAGIC_BYTE2  0xEFU
 
 /* Private variables ---------------------------------------------------------*/
-static BMU_CAN_HandleTypeDef* g_bmu_can_handle = NULL;  // Global handle for RX callback
+/* MISRA C 2012 Rule 8.9 deviation: Global pointer for interrupt context access */
+static volatile BMU_CAN_HandleTypeDef* g_bmu_can_handle = NULL;
 
 /* Private function prototypes -----------------------------------------------*/
 static HAL_StatusTypeDef BMU_CAN_SendMessage(BMU_CAN_HandleTypeDef* handle,
@@ -64,8 +67,10 @@ HAL_StatusTypeDef BMU_CAN_Init(BMU_CAN_HandleTypeDef* handle,
 
     handle->is_initialized = true;
 
-    // Store global handle for RX callback
+    // Store global handle for RX callback (atomic operation to prevent race condition)
+    __disable_irq();
     g_bmu_can_handle = handle;
+    __enable_irq();
 
     // Enable CAN RX interrupt notifications for FIFO0
     if (HAL_CAN_ActivateNotification(hcan1, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
@@ -94,7 +99,8 @@ HAL_StatusTypeDef BMU_CAN_Configure500k(CAN_HandleTypeDef* hcan)
     }
 
     // Stop CAN if running
-    HAL_CAN_Stop(hcan);
+    /* MISRA C 2012 Rule 17.7: Return value intentionally ignored */
+    (void)HAL_CAN_Stop(hcan);
 
     // Deinitialize
     HAL_CAN_DeInit(hcan);
@@ -255,12 +261,12 @@ HAL_StatusTypeDef BMU_CAN_SendHeartbeat(BMU_CAN_HandleTypeDef* handle,
     }
 
     uint8_t data[8] = {0};
-    data[0] = (counter >> 24) & 0xFF;
-    data[1] = (counter >> 16) & 0xFF;
-    data[2] = (counter >> 8) & 0xFF;
-    data[3] = counter & 0xFF;
-    data[4] = 0xBE;  // Magic bytes
-    data[5] = 0xEF;
+    data[0] = (counter >> 24) & 0xFFU;
+    data[1] = (counter >> 16) & 0xFFU;
+    data[2] = (counter >> 8) & 0xFFU;
+    data[3] = counter & 0xFFU;
+    data[4] = BMU_HEARTBEAT_MAGIC_BYTE1;
+    data[5] = BMU_HEARTBEAT_MAGIC_BYTE2;
 
     return BMU_CAN_SendMessage(handle, CAN_ID_HEARTBEAT, data, 8);
 }
@@ -406,29 +412,31 @@ HAL_StatusTypeDef BMU_CAN_ProcessRxMessage(BMU_CAN_HandleTypeDef* handle,
                 return HAL_ERROR;
             }
 
-            BMU_BTT6200_OutputCmd_t* cmd = (BMU_BTT6200_OutputCmd_t*)rx_data;
+            /* MISRA C 2012 Rule 11.5: Use memcpy to avoid unaligned access */
+            BMU_BTT6200_OutputCmd_t cmd;
+            (void)memcpy(&cmd, rx_data, sizeof(cmd));
 
             // Verify magic number for safety
-            if (cmd->magic != BMU_MAGIC_OUTPUT_CMD) {
+            if (cmd.magic != BMU_MAGIC_OUTPUT_CMD) {
                 handle->error_count++;
                 return HAL_ERROR;
             }
 
             // Validate output ID
-            if (cmd->output_id >= BTT6200_NUM_OUTPUTS) {
+            if (cmd.output_id >= BTT6200_NUM_OUTPUTS) {
                 handle->error_count++;
                 return HAL_ERROR;
             }
 
             // Execute command
             bool new_state;
-            if (cmd->command == BMU_CMD_OUTPUT_OFF) {
+            if (cmd.command == BMU_CMD_OUTPUT_OFF) {
                 new_state = false;
-            } else if (cmd->command == BMU_CMD_OUTPUT_ON) {
+            } else if (cmd.command == BMU_CMD_OUTPUT_ON) {
                 new_state = true;
-            } else if (cmd->command == BMU_CMD_OUTPUT_TOGGLE) {
+            } else if (cmd.command == BMU_CMD_OUTPUT_TOGGLE) {
                 // Read current state and toggle
-                BTT6200_Status_t current_status = BTT6200_Config_GetStatus(cmd->output_id);
+                BTT6200_Status_t current_status = BTT6200_Config_GetStatus(cmd.output_id);
                 new_state = (current_status != BTT6200_STATUS_ON);
             } else {
                 handle->error_count++;
@@ -436,7 +444,7 @@ HAL_StatusTypeDef BMU_CAN_ProcessRxMessage(BMU_CAN_HandleTypeDef* handle,
             }
 
             // Set output state
-            BTT6200_Config_SetOutput((BMU_Output_t)cmd->output_id, new_state);
+            BTT6200_Config_SetOutput((BMU_Output_t)cmd.output_id, new_state);
             break;
         }
 
@@ -447,12 +455,14 @@ HAL_StatusTypeDef BMU_CAN_ProcessRxMessage(BMU_CAN_HandleTypeDef* handle,
                 return HAL_ERROR;
             }
 
-            BMU_BTT6200_MultiCmd_t* cmd = (BMU_BTT6200_MultiCmd_t*)rx_data;
+            /* MISRA C 2012 Rule 11.5: Use memcpy to avoid unaligned access */
+            BMU_BTT6200_MultiCmd_t cmd;
+            (void)memcpy(&cmd, rx_data, sizeof(cmd));
 
             // Process each output in mask
             for (uint8_t i = 0; i < BTT6200_NUM_OUTPUTS; i++) {
-                if (cmd->output_mask & (1 << i)) {
-                    bool state = (cmd->output_states & (1 << i)) ? true : false;
+                if ((cmd.output_mask & (1UL << i)) != 0U) {
+                    bool state = ((cmd.output_states & (1UL << i)) != 0U);
                     BTT6200_Config_SetOutput((BMU_Output_t)i, state);
                 }
             }
@@ -466,16 +476,18 @@ HAL_StatusTypeDef BMU_CAN_ProcessRxMessage(BMU_CAN_HandleTypeDef* handle,
                 return HAL_ERROR;
             }
 
-            BMU_SystemCmd_t* cmd = (BMU_SystemCmd_t*)rx_data;
+            /* MISRA C 2012 Rule 11.5: Use memcpy to avoid unaligned access */
+            BMU_SystemCmd_t cmd;
+            (void)memcpy(&cmd, rx_data, sizeof(cmd));
 
             // Verify magic number for safety
-            if (cmd->magic != BMU_MAGIC_SYSTEM_CMD) {
+            if (cmd.magic != BMU_MAGIC_SYSTEM_CMD) {
                 handle->error_count++;
                 return HAL_ERROR;
             }
 
             // Execute system command
-            switch (cmd->command) {
+            switch (cmd.command) {
                 case BMU_CMD_SYSTEM_NOP:
                     // Do nothing
                     break;

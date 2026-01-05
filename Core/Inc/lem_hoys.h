@@ -100,8 +100,8 @@ typedef struct {
     float vref;                     // ADC reference voltage (V)
 
     // Filtering
-    uint8_t filter_samples;         // Number of samples for averaging
-    float* filter_buffer;           // Circular buffer for filtering
+    uint8_t filter_samples;         // Number of samples for averaging (up to LEM_MAX_FILTER_SAMPLES)
+    float filter_buffer[LEM_MAX_FILTER_SAMPLES];  // Static circular buffer (MISRA C 2012 Rule 21.3)
     uint8_t filter_index;           // Current buffer index
 
     // Status
@@ -133,6 +133,7 @@ typedef struct {
 
 // Filtering
 #define LEM_FILTER_SAMPLES_DEFAULT  8       // Moving average filter depth
+#define LEM_MAX_FILTER_SAMPLES      32      // Maximum filter buffer size
 
 // Overcurrent detection
 #define LEM_OC_DEBOUNCE_MS          10      // Debounce time for OC pin
