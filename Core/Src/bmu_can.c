@@ -35,12 +35,10 @@ HAL_StatusTypeDef BMU_CAN_Init(BMU_CAN_HandleTypeDef* handle,
     handle->hcan1 = hcan1;
     handle->hcan2 = hcan2;
 
-    // Konfiguriraj CAN1 na 500 kbps
-    if (BMU_CAN_Configure500k(hcan1) != HAL_OK) {
-        return HAL_ERROR;
-    }
+    // POMEMBNO: CAN je že inicializiran v MX_CAN1_Init()
+    // Tukaj samo nastavimo filter in zaženemo CAN
 
-    // Konfiguriraj filter
+    // Konfiguriraj filter za CAN1
     if (BMU_CAN_ConfigureFilter(hcan1) != HAL_OK) {
         return HAL_ERROR;
     }
@@ -52,9 +50,6 @@ HAL_StatusTypeDef BMU_CAN_Init(BMU_CAN_HandleTypeDef* handle,
 
     // Če je CAN2 prisoten, ga tudi konfiguriraj
     if (hcan2 != NULL) {
-        if (BMU_CAN_Configure500k(hcan2) != HAL_OK) {
-            return HAL_ERROR;
-        }
         if (BMU_CAN_ConfigureFilter(hcan2) != HAL_OK) {
             return HAL_ERROR;
         }
@@ -109,6 +104,7 @@ HAL_StatusTypeDef BMU_CAN_Configure500k(CAN_HandleTypeDef* hcan)
 
 /**
   * @brief  Nastavi CAN filter (accept all messages)
+  * @note   CAN1 uporablja FilterBank 0, CAN2 uporablja FilterBank 14
   */
 HAL_StatusTypeDef BMU_CAN_ConfigureFilter(CAN_HandleTypeDef* hcan)
 {
@@ -118,7 +114,15 @@ HAL_StatusTypeDef BMU_CAN_ConfigureFilter(CAN_HandleTypeDef* hcan)
 
     CAN_FilterTypeDef filter;
 
-    filter.FilterBank = 0;
+    // Določi FilterBank glede na CAN instance
+    if (hcan->Instance == CAN1) {
+        filter.FilterBank = 0;  // CAN1 uporablja banke 0-13
+    } else if (hcan->Instance == CAN2) {
+        filter.FilterBank = 14;  // CAN2 uporablja banke 14-27
+    } else {
+        return HAL_ERROR;
+    }
+
     filter.FilterMode = CAN_FILTERMODE_IDMASK;
     filter.FilterScale = CAN_FILTERSCALE_32BIT;
     filter.FilterIdHigh = 0x0000;
@@ -127,7 +131,7 @@ HAL_StatusTypeDef BMU_CAN_ConfigureFilter(CAN_HandleTypeDef* hcan)
     filter.FilterMaskIdLow = 0x0000;
     filter.FilterFIFOAssignment = CAN_RX_FIFO0;
     filter.FilterActivation = ENABLE;
-    filter.SlaveStartFilterBank = 14;
+    filter.SlaveStartFilterBank = 14;  // CAN2 start filter bank
 
     if (HAL_CAN_ConfigFilter(hcan, &filter) != HAL_OK) {
         return HAL_ERROR;
