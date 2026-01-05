@@ -28,6 +28,8 @@
 #include "temp_logger.h"
 #include "lem_hoys.h"
 #include "lem_config.h"
+#include "bmu_can.h"
+#include "adc_dma.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -66,6 +68,11 @@ UART_HandleTypeDef huart1;
 static TMP1075_HandleTypeDef htmp1075;
 static CY15B256J_HandleTypeDef hfram;
 static TempLogger_HandleTypeDef htemplogger;
+static BMU_CAN_HandleTypeDef hbmucan;
+static ADC_DMA_HandleTypeDef hadc_dma;
+
+// CAN message counters
+static uint32_t can_heartbeat_counter = 0;
 
 /* USER CODE END PV */
 
@@ -219,6 +226,22 @@ int main(void)
       HAL_UART_Transmit(&huart1, lem_fail, sizeof(lem_fail)-1, 100);
   }
 
+  /* Inicializacija CAN protokola (500 kbps) */
+  uint8_t can_msg[] = "\r\n=== CAN Bus Protocol ===\r\n";
+  HAL_UART_Transmit(&huart1, can_msg, sizeof(can_msg)-1, 100);
+
+  if (BMU_CAN_Init(&hbmucan, &hcan1, &hcan2) == HAL_OK) {
+      uint8_t can_ok[] = "CAN bus initialized OK (500 kbps)\r\n";
+      HAL_UART_Transmit(&huart1, can_ok, sizeof(can_ok)-1, 100);
+  } else {
+      uint8_t can_fail[] = "CAN initialization FAILED!\r\n";
+      HAL_UART_Transmit(&huart1, can_fail, sizeof(can_fail)-1, 100);
+  }
+
+  /* Inicializacija ADC DMA (NOTE: potrebuje DMA konfiguracija v CubeMX) */
+  // ADC_DMA_Init(&hadc_dma, &hadc1, NULL);  // Zakomentirano - potrebno DMA setup
+  // ADC_DMA_Start(&hadc_dma);
+
   /* inicializacija BTT6200 modulov */
   BTT6200_Config_Init(&hadc1);   // ali &hadc, isto kot si nastavil v config.c
   BTT6200_Init(&btt6200_modules[0]);
@@ -296,6 +319,41 @@ int main(void)
 	  if (oc_flags != 0) {
 	      sprintf(uart_buf, "*** OVERCURRENT DETECTED! Flags: 0x%04X ***\r\n", oc_flags);
 	      HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+	  }
+
+	  // ========== CAN Bus Data Transmission ==========
+	  if (hbmucan.is_initialized) {
+	      // 1. Pošlji Temperature message (0x101)
+	      BMU_Temperature_Msg_t temp_msg = {0};
+	      temp_msg.temperature_C = temp_x100;
+	      temp_msg.alert_flag = is_alert ? 1 : 0;
+	      temp_msg.sensor_status = 0;
+	      if (htemplogger.is_initialized) {
+	          TempLog_Stats_t stats;
+	          if (TempLogger_GetStats(&htemplogger, &stats) == HAL_OK) {
+	              temp_msg.min_temp_C = stats.min_temp;
+	              temp_msg.max_temp_C = stats.max_temp;
+	          }
+	      }
+	      BMU_CAN_SendTemperature(&hbmucan, &temp_msg);
+
+	      // 2. Pošlji LEM Current messages (0x110-0x112)
+	      BMU_LEM_Current_Msg_t lem_msg1 = {0};
+	      for (uint8_t i = 0; i < 3; i++) {
+	          lem_msg1.current_1_mA = (int16_t)(lem_currents[i] * 1000);
+	      }
+	      BMU_CAN_SendLEMCurrent(&hbmucan, CAN_ID_LEM_CURRENT_1, &lem_msg1);
+
+	      // 3. Pošlji Heartbeat (0x1FF)
+	      BMU_CAN_SendHeartbeat(&hbmucan, can_heartbeat_counter++);
+
+	      // Debug: CAN stats
+	      if (can_heartbeat_counter % 10 == 0) {
+	          uint32_t tx_count, rx_count, err_count;
+	          BMU_CAN_GetStats(&hbmucan, &tx_count, &rx_count, &err_count);
+	          sprintf(uart_buf, "[CAN] TX:%lu RX:%lu ERR:%lu\r\n", tx_count, rx_count, err_count);
+	          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+	      }
 	  }
 
 	  HAL_Delay(1000);
