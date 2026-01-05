@@ -1,0 +1,12 @@
+../Core/Src/btt6200_4esa.c:32:19:BTT6200_Init	3
+../Core/Src/btt6200_4esa.c:56:19:BTT6200_SetChannel	3
+../Core/Src/btt6200_4esa.c:77:19:BTT6200_ChannelOn	1
+../Core/Src/btt6200_4esa.c:86:19:BTT6200_ChannelOff	1
+../Core/Src/btt6200_4esa.c:95:19:BTT6200_SelectDiagnosticChannel	3
+../Core/Src/btt6200_4esa.c:109:19:BTT6200_EnableDiagnostic	2
+../Core/Src/btt6200_4esa.c:125:19:BTT6200_ReadChannelCurrent	9
+../Core/Src/btt6200_4esa.c:193:6:BTT6200_IsOvercurrent	3
+../Core/Src/btt6200_4esa.c:209:18:BTT6200_GetChannelStatus	5
+../Core/Src/btt6200_4esa.c:232:19:BTT6200_DisableAll	3
+../Core/Src/btt6200_4esa.c:248:19:BTT6200_EnableAll	3
+../Core/Src/btt6200_4esa.c:268:26:BTT6200_SetDiagnosticSelect	3

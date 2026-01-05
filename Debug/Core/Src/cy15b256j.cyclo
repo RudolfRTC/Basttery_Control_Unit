@@ -1,0 +1,8 @@
+../Core/Src/cy15b256j.c:17:19:CY15B256J_Init	7
+../Core/Src/cy15b256j.c:60:19:CY15B256J_WriteByte	1
+../Core/Src/cy15b256j.c:70:19:CY15B256J_ReadByte	1
+../Core/Src/cy15b256j.c:80:19:CY15B256J_Write	5
+../Core/Src/cy15b256j.c:107:19:CY15B256J_Read	5
+../Core/Src/cy15b256j.c:133:19:CY15B256J_Fill	6
+../Core/Src/cy15b256j.c:173:19:CY15B256J_SetWriteProtect	4
+../Core/Src/cy15b256j.c:190:6:CY15B256J_IsDeviceReady	2

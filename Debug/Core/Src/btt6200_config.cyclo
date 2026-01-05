@@ -1,0 +1,5 @@
+../Core/Src/btt6200_config.c:58:19:BTT6200_Config_Init	3
+../Core/Src/btt6200_config.c:136:19:BTT6200_Config_SetOutput	2
+../Core/Src/btt6200_config.c:151:19:BTT6200_Config_ReadCurrent	3
+../Core/Src/btt6200_config.c:166:19:BTT6200_Config_DisableAll	3
+../Core/Src/btt6200_config.c:182:18:BTT6200_Config_GetStatus	2

@@ -1,0 +1,17 @@
+../Core/Src/tmp1075.c:29:19:TMP1075_Init	8
+../Core/Src/tmp1075.c:77:19:TMP1075_ReadTemperature	5
+../Core/Src/tmp1075.c:97:19:TMP1075_ReadTemperature_Int	5
+../Core/Src/tmp1075.c:117:19:TMP1075_WriteConfig	6
+../Core/Src/tmp1075.c:139:19:TMP1075_ReadConfig	3
+../Core/Src/tmp1075.c:162:19:TMP1075_SetLowThreshold	3
+../Core/Src/tmp1075.c:176:19:TMP1075_SetHighThreshold	3
+../Core/Src/tmp1075.c:190:19:TMP1075_GetLowThreshold	5
+../Core/Src/tmp1075.c:210:19:TMP1075_GetHighThreshold	5
+../Core/Src/tmp1075.c:230:19:TMP1075_SetShutdownMode	3
+../Core/Src/tmp1075.c:244:19:TMP1075_TriggerOneShot	4
+../Core/Src/tmp1075.c:264:19:TMP1075_SetConversionRate	4
+../Core/Src/tmp1075.c:278:6:TMP1075_IsDeviceReady	2
+../Core/Src/tmp1075.c:292:26:TMP1075_WriteRegister	1
+../Core/Src/tmp1075.c:308:26:TMP1075_ReadRegister	3
+../Core/Src/tmp1075.c:334:14:TMP1075_RawToTemperature	1
+../Core/Src/tmp1075.c:345:17:TMP1075_TemperatureToRaw	1
