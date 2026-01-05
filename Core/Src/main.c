@@ -24,8 +24,13 @@
 #include "btt6200_4esa.h"
 #include "btt6200_config.h"
 #include "tmp1075.h"
+#include "cy15b256j.h"
+#include "temp_logger.h"
+#include "lem_hoys.h"
+#include "lem_config.h"
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 /* USER CODE END Includes */
 
@@ -59,6 +64,8 @@ UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 static TMP1075_HandleTypeDef htmp1075;
+static CY15B256J_HandleTypeDef hfram;
+static TempLogger_HandleTypeDef htemplogger;
 
 /* USER CODE END PV */
 
@@ -137,14 +144,87 @@ int main(void)
   if (tmp_status == HAL_OK) {
       uint8_t init_ok[] = "TMP1075 initialized OK\r\n";
       HAL_UART_Transmit(&huart1, init_ok, sizeof(init_ok)-1, 100);
+
+      // Nastavi low temperature threshold na 0°C (alert pri < 0°C)
+      if (TMP1075_SetLowThreshold(&htmp1075, 0.0f) == HAL_OK) {
+          uint8_t thresh_ok[] = "Low threshold set to 0.0C\r\n";
+          HAL_UART_Transmit(&huart1, thresh_ok, sizeof(thresh_ok)-1, 100);
+      }
   } else {
       uint8_t init_fail[] = "TMP1075 initialization FAILED!\r\n";
       HAL_UART_Transmit(&huart1, init_fail, sizeof(init_fail)-1, 100);
   }
 
+  // I2C scan za FRAM CY15B256J
+  if (HAL_I2C_IsDeviceReady(&hi2c2, 0x50 << 1, 3, 100) == HAL_OK) {
+      uint8_t fram_found[] = "FRAM CY15B256J detected at 0x50\r\n";
+      HAL_UART_Transmit(&huart1, fram_found, sizeof(fram_found)-1, 100);
+  } else {
+      uint8_t fram_notfound[] = "FRAM NOT detected at 0x50!\r\n";
+      HAL_UART_Transmit(&huart1, fram_notfound, sizeof(fram_notfound)-1, 100);
+  }
+
+  // Inicializacija FRAM
+  HAL_StatusTypeDef fram_status = CY15B256J_Init(&hfram, &hi2c2, 0x50, NULL, 0);
+  if (fram_status == HAL_OK) {
+      uint8_t fram_ok[] = "FRAM initialized OK\r\n";
+      HAL_UART_Transmit(&huart1, fram_ok, sizeof(fram_ok)-1, 100);
+
+      // Inicializacija Temperature Logger (reset_stats = false za ohranitev podatkov)
+      if (TempLogger_Init(&htemplogger, &hfram, false) == HAL_OK) {
+          uint8_t logger_ok[] = "Temperature Logger initialized OK\r\n";
+          HAL_UART_Transmit(&huart1, logger_ok, sizeof(logger_ok)-1, 100);
+
+          // Izpiši trenutne statistike
+          TempLog_Stats_t stats;
+          if (TempLogger_GetStats(&htemplogger, &stats) == HAL_OK) {
+              sprintf(uart_buf, "Stored samples: %lu, Alerts: %lu\r\n",
+                      stats.sample_count, stats.alert_count);
+              HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+
+              if (stats.sample_count > 0) {
+                  sprintf(uart_buf, "Min: %d.%02dC, Max: %d.%02dC\r\n",
+                          stats.min_temp/100, abs(stats.min_temp%100),
+                          stats.max_temp/100, abs(stats.max_temp%100));
+                  HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+              }
+          }
+      }
+  } else {
+      uint8_t fram_fail[] = "FRAM initialization FAILED!\r\n";
+      HAL_UART_Transmit(&huart1, fram_fail, sizeof(fram_fail)-1, 100);
+  }
+
+  /* Inicializacija LEM HOYS current sensorjev */
+  uint8_t lem_msg[] = "\r\n=== LEM HOYS Current Sensors ===\r\n";
+  HAL_UART_Transmit(&huart1, lem_msg, sizeof(lem_msg)-1, 100);
+
+  if (LEM_Config_Init(&hadc1) == HAL_OK) {
+      uint8_t lem_ok[] = "LEM sensors initialized OK\r\n";
+      HAL_UART_Transmit(&huart1, lem_ok, sizeof(lem_ok)-1, 100);
+
+      // Kalibriraj vse senzorje (POMEMBNO: mora biti 0A!)
+      uint8_t cal_msg[] = "Calibrating LEM sensors (ensure 0A)...\r\n";
+      HAL_UART_Transmit(&huart1, cal_msg, sizeof(cal_msg)-1, 100);
+
+      if (LEM_Config_CalibrateAll(50) == HAL_OK) {
+          uint8_t cal_ok[] = "LEM calibration complete\r\n";
+          HAL_UART_Transmit(&huart1, cal_ok, sizeof(cal_ok)-1, 100);
+      } else {
+          uint8_t cal_fail[] = "LEM calibration FAILED!\r\n";
+          HAL_UART_Transmit(&huart1, cal_fail, sizeof(cal_fail)-1, 100);
+      }
+  } else {
+      uint8_t lem_fail[] = "LEM initialization FAILED!\r\n";
+      HAL_UART_Transmit(&huart1, lem_fail, sizeof(lem_fail)-1, 100);
+  }
+
   /* inicializacija BTT6200 modulov */
   BTT6200_Config_Init(&hadc1);   // ali &hadc, isto kot si nastavil v config.c
   BTT6200_Init(&btt6200_modules[0]);
+
+  uint8_t ready[] = "\r\n*** System Ready ***\r\n\r\n";
+  HAL_UART_Transmit(&huart1, ready, sizeof(ready)-1, 100);
 
   /* USER CODE END 2 */
 
@@ -165,11 +245,57 @@ int main(void)
 	      // Uspešno branje temperature
 	      int temp_int = (int)tC;
 	      int temp_frac = (int)((tC - temp_int) * 100);
-	      sprintf(uart_buf, "Temperature: %d.%02d C\r\n", temp_int, temp_frac);
-	      HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+	      if (temp_frac < 0) temp_frac = -temp_frac;  // Absolutna vrednost za decimale
+
+	      // Konvertiraj v int16_t (°C × 100) za shranjevanje v FRAM
+	      int16_t temp_x100 = (int16_t)(tC * 100.0f);
+	      bool is_alert = (tC < 0.0f);
+
+	      // Shrani v FRAM (če je inicializiran)
+	      if (htemplogger.is_initialized) {
+	          if (TempLogger_LogTemperature(&htemplogger, temp_x100, is_alert) == HAL_OK) {
+	              // Uspešno shranjeno v FRAM
+	          }
+	      }
+
+	      // ALERT: Temperatura pod 0°C
+	      if (is_alert) {
+	          sprintf(uart_buf, "*** ALERT! Temperature: %d.%02d C (BELOW 0C!) ***\r\n", temp_int, temp_frac);
+	          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+	          // Prižgi LED - hitro utripanje za alarm
+	          HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, SET);
+	          HAL_Delay(100);
+	          HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, RESET);
+	          HAL_Delay(100);
+	          HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, SET);
+	      } else {
+	          sprintf(uart_buf, "Temperature: %d.%02d C\r\n", temp_int, temp_frac);
+	          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+	      }
 	  } else {
 	      uint8_t err[] = "Temperature read FAILED!\r\n";
 	      HAL_UART_Transmit(&huart1, err, sizeof(err)-1, 100);
+	  }
+
+	  // Preberi LEM sensorje (prikaz prvih 3 za demo)
+	  float lem_currents[3];
+	  for (uint8_t i = 0; i < 3; i++) {
+	      if (LEM_Config_ReadCurrentFiltered(i, &lem_currents[i]) == HAL_OK) {
+	          int curr_int = (int)lem_currents[i];
+	          int curr_frac = (int)(fabsf(lem_currents[i] - curr_int) * 1000);
+	          sprintf(uart_buf, "LEM_%d: %d.%03d A  ", i+1, curr_int, curr_frac);
+	          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+	      }
+	  }
+	  uint8_t newline[] = "\r\n";
+	  HAL_UART_Transmit(&huart1, newline, sizeof(newline)-1, 100);
+
+	  // Preveri overcurrent na vseh LEM senzorjih
+	  uint16_t oc_flags = 0;
+	  LEM_Config_CheckOvercurrents(&oc_flags);
+	  if (oc_flags != 0) {
+	      sprintf(uart_buf, "*** OVERCURRENT DETECTED! Flags: 0x%04X ***\r\n", oc_flags);
+	      HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 	  }
 
 	  HAL_Delay(1000);
