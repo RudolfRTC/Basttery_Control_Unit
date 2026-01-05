@@ -264,6 +264,8 @@ int main(void)
 
 	  // Preberi in izpiši temperaturo
 	  float tC = 0.0f;
+	  int16_t temp_x100 = 0;  // Deklarirano zunaj if bloka za CAN
+	  bool is_alert = false;   // Deklarirano zunaj if bloka za CAN
 	  if (TMP1075_ReadTemperature(&htmp1075, &tC) == HAL_OK) {
 	      // Uspešno branje temperature
 	      int temp_int = (int)tC;
@@ -271,8 +273,8 @@ int main(void)
 	      if (temp_frac < 0) temp_frac = -temp_frac;  // Absolutna vrednost za decimale
 
 	      // Konvertiraj v int16_t (°C × 100) za shranjevanje v FRAM
-	      int16_t temp_x100 = (int16_t)(tC * 100.0f);
-	      bool is_alert = (tC < 0.0f);
+	      temp_x100 = (int16_t)(tC * 100.0f);
+	      is_alert = (tC < 0.0f);
 
 	      // Shrani v FRAM (če je inicializiran)
 	      if (htemplogger.is_initialized) {
