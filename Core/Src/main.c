@@ -355,14 +355,88 @@ int main(void)
 	      }
 	      BMU_CAN_SendTemperature(&hbmucan, &temp_msg);
 
-	      // 2. Pošlji LEM Current messages (0x110-0x112)
+	      // 2. Pošlji Power Supply Status (0x102)
+	      BMU_PowerSupply_Msg_t pwr_msg = {0};
+	      pwr_msg.pg_5v = HAL_GPIO_ReadPin(PG_5V_GPIO_Port, PG_5V_Pin);
+	      pwr_msg.pg_3v3a = HAL_GPIO_ReadPin(PG_3V3A_GPIO_Port, PG_3V3A_Pin);
+	      pwr_msg.pwr_sleep_state = HAL_GPIO_ReadPin(PWR_SLEEP_GPIO_Port, PWR_SLEEP_Pin);
+	      // TODO: Preberi PWR_CURRENT in PWR_VOLTAGE iz ADC
+	      pwr_msg.pwr_voltage_mV = 24000;  // Placeholder
+	      pwr_msg.pwr_current_mA = 0;      // Placeholder
+	      pwr_msg.pg_24v = (pwr_msg.pwr_voltage_mV > 20000) ? 1 : 0;
+	      BMU_CAN_SendPowerSupply(&hbmucan, &pwr_msg);
+
+	      // 3. Pošlji Input States (0x103)
+	      BMU_InputStates_Msg_t input_msg = {0};
+	      input_msg.input_states = 0;
+	      // Preberi vseh 20 digitalnih inputov (IN_1 do IN_20)
+	      if (HAL_GPIO_ReadPin(IN_1_GPIO_Port, IN_1_Pin)) input_msg.input_states |= (1 << 0);
+	      if (HAL_GPIO_ReadPin(IN_2_GPIO_Port, IN_2_Pin)) input_msg.input_states |= (1 << 1);
+	      if (HAL_GPIO_ReadPin(IN_3_GPIO_Port, IN_3_Pin)) input_msg.input_states |= (1 << 2);
+	      if (HAL_GPIO_ReadPin(IN_4_GPIO_Port, IN_4_Pin)) input_msg.input_states |= (1 << 3);
+	      if (HAL_GPIO_ReadPin(IN_5_GPIO_Port, IN_5_Pin)) input_msg.input_states |= (1 << 4);
+	      if (HAL_GPIO_ReadPin(IN_6_GPIO_Port, IN_6_Pin)) input_msg.input_states |= (1 << 5);
+	      if (HAL_GPIO_ReadPin(IN_7_GPIO_Port, IN_7_Pin)) input_msg.input_states |= (1 << 6);
+	      if (HAL_GPIO_ReadPin(IN_8_GPIO_Port, IN_8_Pin)) input_msg.input_states |= (1 << 7);
+	      if (HAL_GPIO_ReadPin(IN_9_GPIO_Port, IN_9_Pin)) input_msg.input_states |= (1 << 8);
+	      if (HAL_GPIO_ReadPin(IN_10_GPIO_Port, IN_10_Pin)) input_msg.input_states |= (1 << 9);
+	      if (HAL_GPIO_ReadPin(IN_11_GPIO_Port, IN_11_Pin)) input_msg.input_states |= (1 << 10);
+	      if (HAL_GPIO_ReadPin(IN_12_GPIO_Port, IN_12_Pin)) input_msg.input_states |= (1 << 11);
+	      if (HAL_GPIO_ReadPin(IN_13_GPIO_Port, IN_13_Pin)) input_msg.input_states |= (1 << 12);
+	      if (HAL_GPIO_ReadPin(IN_14_GPIO_Port, IN_14_Pin)) input_msg.input_states |= (1 << 13);
+	      if (HAL_GPIO_ReadPin(IN_15_GPIO_Port, IN_15_Pin)) input_msg.input_states |= (1 << 14);
+	      if (HAL_GPIO_ReadPin(IN_16_GPIO_Port, IN_16_Pin)) input_msg.input_states |= (1 << 15);
+	      if (HAL_GPIO_ReadPin(IN_17_GPIO_Port, IN_17_Pin)) input_msg.input_states |= (1 << 16);
+	      if (HAL_GPIO_ReadPin(IN_18_GPIO_Port, IN_18_Pin)) input_msg.input_states |= (1 << 17);
+	      if (HAL_GPIO_ReadPin(IN_19_GPIO_Port, IN_19_Pin)) input_msg.input_states |= (1 << 18);
+	      if (HAL_GPIO_ReadPin(IN_20_GPIO_Port, IN_20_Pin)) input_msg.input_states |= (1 << 19);
+	      BMU_CAN_SendInputStates(&hbmucan, &input_msg);
+
+	      // 4. Pošlji LEM Current messages (0x110-0x112) - FIXED
+	      float all_lem_currents[10];
+	      LEM_Config_ReadAllCurrents(all_lem_currents);
+
 	      BMU_LEM_Current_Msg_t lem_msg1 = {0};
-	      for (uint8_t i = 0; i < 3; i++) {
-	          lem_msg1.current_1_mA = (int16_t)(lem_currents[i] * 1000);
-	      }
+	      lem_msg1.current_1_mA = (int16_t)(all_lem_currents[0] * 1000);
+	      lem_msg1.current_2_mA = (int16_t)(all_lem_currents[1] * 1000);
+	      lem_msg1.current_3_mA = (int16_t)(all_lem_currents[2] * 1000);
+	      lem_msg1.current_4_mA = (int16_t)(all_lem_currents[3] * 1000);
 	      BMU_CAN_SendLEMCurrent(&hbmucan, CAN_ID_LEM_CURRENT_1, &lem_msg1);
 
-	      // 3. Pošlji Heartbeat (0x1FF)
+	      BMU_LEM_Current_Msg_t lem_msg2 = {0};
+	      lem_msg2.current_1_mA = (int16_t)(all_lem_currents[4] * 1000);
+	      lem_msg2.current_2_mA = (int16_t)(all_lem_currents[5] * 1000);
+	      lem_msg2.current_3_mA = (int16_t)(all_lem_currents[6] * 1000);
+	      lem_msg2.current_4_mA = (int16_t)(all_lem_currents[7] * 1000);
+	      BMU_CAN_SendLEMCurrent(&hbmucan, CAN_ID_LEM_CURRENT_2, &lem_msg2);
+
+	      BMU_LEM_Current_Msg_t lem_msg3 = {0};
+	      lem_msg3.current_1_mA = (int16_t)(all_lem_currents[8] * 1000);
+	      lem_msg3.current_2_mA = (int16_t)(all_lem_currents[9] * 1000);
+	      lem_msg3.current_3_mA = 0;
+	      lem_msg3.current_4_mA = 0;
+	      BMU_CAN_SendLEMCurrent(&hbmucan, CAN_ID_LEM_CURRENT_3, &lem_msg3);
+
+	      // 5. Pošlji BTT6200 Detailed Status (0x124-0x128) - vseh 20 outputov
+	      for (uint8_t msg_idx = 0; msg_idx < 5; msg_idx++) {
+	          BMU_BTT6200_Detailed_Msg_t btt_detail = {0};
+	          uint8_t base_out = msg_idx * 4;
+
+	          btt_detail.out0_state = (BTT6200_Config_GetStatus(base_out + 0) == BTT6200_STATUS_ON) ? 1 : 0;
+	          btt_detail.out1_state = (BTT6200_Config_GetStatus(base_out + 1) == BTT6200_STATUS_ON) ? 1 : 0;
+	          btt_detail.out2_state = (BTT6200_Config_GetStatus(base_out + 2) == BTT6200_STATUS_ON) ? 1 : 0;
+	          btt_detail.out3_state = (BTT6200_Config_GetStatus(base_out + 3) == BTT6200_STATUS_ON) ? 1 : 0;
+
+	          uint32_t curr_mA;
+	          BTT6200_Config_ReadCurrent(base_out + 0, &curr_mA);
+	          btt_detail.out0_current_mA = (uint16_t)curr_mA;
+	          BTT6200_Config_ReadCurrent(base_out + 1, &curr_mA);
+	          btt_detail.out1_current_mA = (uint16_t)curr_mA;
+
+	          BMU_CAN_SendBTTDetailed(&hbmucan, CAN_ID_BTT6200_DETAIL_1 + msg_idx, &btt_detail);
+	      }
+
+	      // 6. Pošlji Heartbeat (0x1FF)
 	      BMU_CAN_SendHeartbeat(&hbmucan, can_heartbeat_counter++);
 
 	      // Debug: CAN stats
@@ -863,6 +937,15 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+/**
+  * @brief  CAN RX FIFO 0 message pending callback
+  */
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef* hcan)
+{
+    // Call BMU CAN RX handler
+    BMU_CAN_RxCallback(hcan);
+}
 
 /* USER CODE END 4 */
 

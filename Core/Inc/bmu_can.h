@@ -42,17 +42,34 @@ extern "C" {
   * @brief  CAN message IDs
   */
 typedef enum {
+    // Status Messages (TX) - 0x100-0x1FF
     CAN_ID_BMU_STATUS       = 0x100,    // BMU system status
     CAN_ID_TEMPERATURE      = 0x101,    // Temperature sensor data
+    CAN_ID_POWER_SUPPLY     = 0x102,    // Power supply status (5V, 3.3V, 24V)
+    CAN_ID_INPUT_STATES     = 0x103,    // Digital input states (IN_1 to IN_20)
+
     CAN_ID_LEM_CURRENT_1    = 0x110,    // LEM 1-4 currents
     CAN_ID_LEM_CURRENT_2    = 0x111,    // LEM 5-8 currents
     CAN_ID_LEM_CURRENT_3    = 0x112,    // LEM 9-10 currents
-    CAN_ID_BTT6200_STATUS_1 = 0x120,    // BTT6200 modules 0-1
-    CAN_ID_BTT6200_STATUS_2 = 0x121,    // BTT6200 modules 2-3
-    CAN_ID_BTT6200_STATUS_3 = 0x122,    // BTT6200 module 4
+
+    CAN_ID_BTT6200_STATUS_1 = 0x120,    // BTT6200 modules 0-1 (basic status)
+    CAN_ID_BTT6200_STATUS_2 = 0x121,    // BTT6200 modules 2-3 (basic status)
+    CAN_ID_BTT6200_STATUS_3 = 0x122,    // BTT6200 module 4 (basic status)
+
+    CAN_ID_BTT6200_DETAIL_1 = 0x124,    // BTT6200 OUT 0-3 (detailed with current)
+    CAN_ID_BTT6200_DETAIL_2 = 0x125,    // BTT6200 OUT 4-7
+    CAN_ID_BTT6200_DETAIL_3 = 0x126,    // BTT6200 OUT 8-11
+    CAN_ID_BTT6200_DETAIL_4 = 0x127,    // BTT6200 OUT 12-15
+    CAN_ID_BTT6200_DETAIL_5 = 0x128,    // BTT6200 OUT 16-19
+
     CAN_ID_FRAM_STATS       = 0x130,    // FRAM statistics
     CAN_ID_ALARMS           = 0x140,    // Alarms and errors
-    CAN_ID_HEARTBEAT        = 0x1FF     // Heartbeat message
+    CAN_ID_HEARTBEAT        = 0x1FF,    // Heartbeat message
+
+    // Command Messages (RX) - 0x200-0x2FF
+    CAN_ID_BTT6200_OUTPUT_CMD = 0x200,  // Control single BTT6200 output
+    CAN_ID_BTT6200_MULTI_CMD  = 0x201,  // Control multiple outputs (bitmap)
+    CAN_ID_SYSTEM_CMD         = 0x202,  // System commands (reset, reboot, etc.)
 } BMU_CAN_MessageID_t;
 
 /**
@@ -117,6 +134,71 @@ typedef struct __attribute__((packed)) {
 } BMU_Alarms_Msg_t;
 
 /**
+  * @brief  Power Supply Status message (0x102)
+  */
+typedef struct __attribute__((packed)) {
+    uint8_t pg_5v;              // Power Good 5V (0=Fault, 1=OK)
+    uint8_t pg_3v3a;            // Power Good 3.3V Analog
+    uint8_t pg_24v;             // Power Good 24V (computed from voltage)
+    uint8_t pwr_sleep_state;    // PWR_SLEEP pin state
+    uint16_t pwr_voltage_mV;    // Power supply voltage in mV
+    uint16_t pwr_current_mA;    // Power supply current in mA
+} BMU_PowerSupply_Msg_t;
+
+/**
+  * @brief  Input States message (0x103)
+  */
+typedef struct __attribute__((packed)) {
+    uint32_t input_states;      // Bits 0-19: IN_1 to IN_20 (1=HIGH, 0=LOW)
+    uint32_t reserved;          // Reserved for future use
+} BMU_InputStates_Msg_t;
+
+/**
+  * @brief  BTT6200 Detailed Status message (0x124-0x128)
+  *         4 outputs per message, with current measurement
+  */
+typedef struct __attribute__((packed)) {
+    uint8_t out0_state;         // Output 0: 0=OFF, 1=ON
+    uint8_t out1_state;         // Output 1: 0=OFF, 1=ON
+    uint8_t out2_state;         // Output 2: 0=OFF, 1=ON
+    uint8_t out3_state;         // Output 3: 0=OFF, 1=ON
+    uint16_t out0_current_mA;   // Output 0 current in mA
+    uint16_t out1_current_mA;   // Output 1 current in mA
+    // Note: message continues in next CAN frame for out2/out3
+} BMU_BTT6200_Detailed_Msg_t;
+
+// ==================== COMMAND MESSAGES (RX) ====================
+
+/**
+  * @brief  BTT6200 Output Command (0x200)
+  *         Control single output ON/OFF
+  */
+typedef struct __attribute__((packed)) {
+    uint8_t output_id;          // Output ID (0-19)
+    uint8_t command;            // 0=OFF, 1=ON, 2=TOGGLE
+    uint16_t reserved;          // Reserved
+    uint32_t magic;             // Safety magic number (0xDEADBEEF)
+} BMU_BTT6200_OutputCmd_t;
+
+/**
+  * @brief  BTT6200 Multi Command (0x201)
+  *         Control multiple outputs using bitmap
+  */
+typedef struct __attribute__((packed)) {
+    uint32_t output_mask;       // Bits 0-19: which outputs to control
+    uint32_t output_states;     // Bits 0-19: desired states (1=ON, 0=OFF)
+} BMU_BTT6200_MultiCmd_t;
+
+/**
+  * @brief  System Command (0x202)
+  */
+typedef struct __attribute__((packed)) {
+    uint8_t command;            // 0=NOP, 1=RESET_STATS, 2=DISABLE_ALL, 3=ENABLE_ALL, 0xFE=REBOOT
+    uint8_t reserved[3];
+    uint32_t magic;             // Safety magic number (0xCAFEBABE)
+} BMU_SystemCmd_t;
+
+/**
   * @brief  CAN handle structure
   */
 typedef struct {
@@ -150,6 +232,21 @@ typedef struct {
 #define BMU_STATE_NORMAL            1
 #define BMU_STATE_WARNING           2
 #define BMU_STATE_ERROR             3
+
+// Command values
+#define BMU_CMD_OUTPUT_OFF          0
+#define BMU_CMD_OUTPUT_ON           1
+#define BMU_CMD_OUTPUT_TOGGLE       2
+
+#define BMU_CMD_SYSTEM_NOP          0
+#define BMU_CMD_SYSTEM_RESET_STATS  1
+#define BMU_CMD_SYSTEM_DISABLE_ALL  2
+#define BMU_CMD_SYSTEM_ENABLE_ALL   3
+#define BMU_CMD_SYSTEM_REBOOT       0xFE
+
+// Safety magic numbers
+#define BMU_MAGIC_OUTPUT_CMD        0xDEADBEEF
+#define BMU_MAGIC_SYSTEM_CMD        0xCAFEBABE
 
 /* Exported functions prototypes ---------------------------------------------*/
 
@@ -257,6 +354,54 @@ HAL_StatusTypeDef BMU_CAN_GetStats(BMU_CAN_HandleTypeDef* handle,
                                   uint32_t* tx_count,
                                   uint32_t* rx_count,
                                   uint32_t* error_count);
+
+/**
+  * @brief  Pošlji Power Supply Status sporočilo (0x102)
+  * @param  handle: Pointer na BMU_CAN_HandleTypeDef
+  * @param  msg: Pointer na BMU_PowerSupply_Msg_t
+  * @retval HAL status
+  */
+HAL_StatusTypeDef BMU_CAN_SendPowerSupply(BMU_CAN_HandleTypeDef* handle,
+                                          BMU_PowerSupply_Msg_t* msg);
+
+/**
+  * @brief  Pošlji Input States sporočilo (0x103)
+  * @param  handle: Pointer na BMU_CAN_HandleTypeDef
+  * @param  msg: Pointer na BMU_InputStates_Msg_t
+  * @retval HAL status
+  */
+HAL_StatusTypeDef BMU_CAN_SendInputStates(BMU_CAN_HandleTypeDef* handle,
+                                          BMU_InputStates_Msg_t* msg);
+
+/**
+  * @brief  Pošlji BTT6200 Detailed Status sporočilo (0x124-0x128)
+  * @param  handle: Pointer na BMU_CAN_HandleTypeDef
+  * @param  msg_id: CAN_ID_BTT6200_DETAIL_1/2/3/4/5
+  * @param  msg: Pointer na BMU_BTT6200_Detailed_Msg_t
+  * @retval HAL status
+  */
+HAL_StatusTypeDef BMU_CAN_SendBTTDetailed(BMU_CAN_HandleTypeDef* handle,
+                                          uint32_t msg_id,
+                                          BMU_BTT6200_Detailed_Msg_t* msg);
+
+/**
+  * @brief  Procesira prejeto CAN sporočilo (RX)
+  * @param  handle: Pointer na BMU_CAN_HandleTypeDef
+  * @param  rx_header: Pointer na CAN_RxHeaderTypeDef
+  * @param  rx_data: Pointer na prejete podatke (8 bajtov)
+  * @retval HAL status
+  */
+HAL_StatusTypeDef BMU_CAN_ProcessRxMessage(BMU_CAN_HandleTypeDef* handle,
+                                           CAN_RxHeaderTypeDef* rx_header,
+                                           uint8_t* rx_data);
+
+/**
+  * @brief  CAN RX callback - klicana iz interrupt-a
+  * @note   To funkcijo mora uporabnik poklicati iz HAL_CAN_RxFifo0MsgPendingCallback
+  * @param  hcan: Pointer na CAN_HandleTypeDef
+  * @retval None
+  */
+void BMU_CAN_RxCallback(CAN_HandleTypeDef* hcan);
 
 #ifdef __cplusplus
 }

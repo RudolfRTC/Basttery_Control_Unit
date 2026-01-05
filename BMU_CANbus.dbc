@@ -46,6 +46,17 @@ BO_ 257 BMU_Temperature: 8 BMU
  SG_ MinTemp_C : 32|16@1- (0.01,0) [-100|100] "C" BMS,VCU
  SG_ MaxTemp_C : 48|16@1- (0.01,0) [-100|100] "C" BMS,VCU
 
+BO_ 258 PowerSupply_Status: 8 BMU
+ SG_ PG_5V : 0|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ PG_3V3A : 8|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ PG_24V : 16|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ PWR_SleepState : 24|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ PWR_Voltage_mV : 32|16@1+ (1,0) [0|30000] "mV" BMS,VCU
+ SG_ PWR_Current_mA : 48|16@1+ (1,0) [0|10000] "mA" BMS,VCU
+
+BO_ 259 Input_States: 8 BMU
+ SG_ InputStates : 0|32@1+ (1,0) [0|1048575] "" BMS,VCU
+
 BO_ 272 LEM_Current_1: 8 BMU
  SG_ LEM1_Current : 0|16@1- (0.001,0) [-200|200] "A" BMS,VCU
  SG_ LEM2_Current : 16|16@1- (0.001,0) [-200|200] "A" BMS,VCU
@@ -78,6 +89,46 @@ BO_ 290 BTT6200_Status_3: 8 BMU
  SG_ Module4_OutputStates : 0|16@1+ (1,0) [0|15] "" BMS,VCU
  SG_ Module4_OCFlags : 16|16@1+ (1,0) [0|15] "" BMS,VCU
 
+BO_ 292 BTT6200_Detailed_1: 8 BMU
+ SG_ OUT0_State : 0|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ OUT1_State : 8|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ OUT2_State : 16|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ OUT3_State : 24|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ OUT0_Current_mA : 32|16@1+ (1,0) [0|10000] "mA" BMS,VCU
+ SG_ OUT1_Current_mA : 48|16@1+ (1,0) [0|10000] "mA" BMS,VCU
+
+BO_ 293 BTT6200_Detailed_2: 8 BMU
+ SG_ OUT4_State : 0|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ OUT5_State : 8|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ OUT6_State : 16|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ OUT7_State : 24|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ OUT4_Current_mA : 32|16@1+ (1,0) [0|10000] "mA" BMS,VCU
+ SG_ OUT5_Current_mA : 48|16@1+ (1,0) [0|10000] "mA" BMS,VCU
+
+BO_ 294 BTT6200_Detailed_3: 8 BMU
+ SG_ OUT8_State : 0|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ OUT9_State : 8|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ OUT10_State : 16|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ OUT11_State : 24|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ OUT8_Current_mA : 32|16@1+ (1,0) [0|10000] "mA" BMS,VCU
+ SG_ OUT9_Current_mA : 48|16@1+ (1,0) [0|10000] "mA" BMS,VCU
+
+BO_ 295 BTT6200_Detailed_4: 8 BMU
+ SG_ OUT12_State : 0|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ OUT13_State : 8|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ OUT14_State : 16|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ OUT15_State : 24|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ OUT12_Current_mA : 32|16@1+ (1,0) [0|10000] "mA" BMS,VCU
+ SG_ OUT13_Current_mA : 48|16@1+ (1,0) [0|10000] "mA" BMS,VCU
+
+BO_ 296 BTT6200_Detailed_5: 8 BMU
+ SG_ OUT16_State : 0|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ OUT17_State : 8|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ OUT18_State : 16|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ OUT19_State : 24|8@1+ (1,0) [0|1] "" BMS,VCU
+ SG_ OUT16_Current_mA : 32|16@1+ (1,0) [0|10000] "mA" BMS,VCU
+ SG_ OUT17_Current_mA : 48|16@1+ (1,0) [0|10000] "mA" BMS,VCU
+
 BO_ 304 FRAM_Statistics: 8 BMU
  SG_ SampleCount : 0|32@1+ (1,0) [0|4294967295] "" BMS,VCU
  SG_ AlertCount : 32|32@1+ (1,0) [0|4294967295] "" BMS,VCU
@@ -93,6 +144,21 @@ BO_ 511 Heartbeat: 8 BMU
  SG_ MagicByte1 : 32|8@1+ (1,0) [0|255] "" BMS,VCU
  SG_ MagicByte2 : 40|8@1+ (1,0) [0|255] "" BMS,VCU
 
+BO_ 512 BTT6200_OutputCmd: 8 BMS,VCU
+ SG_ OutputID : 0|8@1+ (1,0) [0|19] "" BMU
+ SG_ Command : 8|8@1+ (1,0) [0|2] "" BMU
+ SG_ Reserved : 16|16@1+ (1,0) [0|65535] "" BMU
+ SG_ MagicNumber : 32|32@1+ (1,0) [0|4294967295] "" BMU
+
+BO_ 513 BTT6200_MultiCmd: 8 BMS,VCU
+ SG_ OutputMask : 0|32@1+ (1,0) [0|1048575] "" BMU
+ SG_ OutputStates : 32|32@1+ (1,0) [0|1048575] "" BMU
+
+BO_ 514 SystemCmd: 8 BMS,VCU
+ SG_ SystemCommand : 0|8@1+ (1,0) [0|255] "" BMU
+ SG_ Reserved_Bytes : 8|24@1+ (1,0) [0|16777215] "" BMU
+ SG_ MagicNumber : 32|32@1+ (1,0) [0|4294967295] "" BMU
+
 
 
 CM_ BU_ BMU "Battery Management Unit - Main Controller";
@@ -100,15 +166,25 @@ CM_ BU_ BMS "Battery Management System - External";
 CM_ BU_ VCU "Vehicle Control Unit";
 CM_ BO_ 256 "BMU System Status Message - 10Hz";
 CM_ BO_ 257 "Temperature Sensor Data - 1Hz";
+CM_ BO_ 258 "Power Supply Status (5V, 3.3V, 24V) - 1Hz";
+CM_ BO_ 259 "Digital Input States (IN_1 to IN_20) - 1Hz";
 CM_ BO_ 272 "LEM Current Sensors 1-4 - 10Hz";
 CM_ BO_ 273 "LEM Current Sensors 5-8 - 10Hz";
 CM_ BO_ 274 "LEM Current Sensors 9-10 - 10Hz";
 CM_ BO_ 288 "BTT6200 Output Status Modules 0-1 - 5Hz";
 CM_ BO_ 289 "BTT6200 Output Status Modules 2-3 - 5Hz";
 CM_ BO_ 290 "BTT6200 Output Status Module 4 - 5Hz";
+CM_ BO_ 292 "BTT6200 Detailed Status OUT 0-3 - 1Hz";
+CM_ BO_ 293 "BTT6200 Detailed Status OUT 4-7 - 1Hz";
+CM_ BO_ 294 "BTT6200 Detailed Status OUT 8-11 - 1Hz";
+CM_ BO_ 295 "BTT6200 Detailed Status OUT 12-15 - 1Hz";
+CM_ BO_ 296 "BTT6200 Detailed Status OUT 16-19 - 1Hz";
 CM_ BO_ 304 "FRAM Memory Statistics - 1Hz";
 CM_ BO_ 320 "System Alarms and Errors - On Change";
 CM_ BO_ 511 "Heartbeat Message - 1Hz";
+CM_ BO_ 512 "BTT6200 Output Control Command (RX) - On Demand";
+CM_ BO_ 513 "BTT6200 Multiple Output Control (RX) - On Demand";
+CM_ BO_ 514 "System Command (RX) - On Demand";
 CM_ SG_ 256 SystemState "0=Init, 1=Normal, 2=Warning, 3=Error";
 CM_ SG_ 256 PowerGoodFlags "Bit0=5V, Bit1=3V3A, Bit2=24V";
 CM_ SG_ 257 Temperature_C "Current temperature from TMP1075 sensor";
@@ -127,15 +203,30 @@ BA_DEF_DEF_ BO_ "GenMsgCycleTime" 0;
 BA_DEF_DEF_ SG_ "GenSigStartValue" 0;
 BA_ "GenMsgCycleTime" BO_ 256 100;
 BA_ "GenMsgCycleTime" BO_ 257 1000;
+BA_ "GenMsgCycleTime" BO_ 258 1000;
+BA_ "GenMsgCycleTime" BO_ 259 1000;
 BA_ "GenMsgCycleTime" BO_ 272 100;
 BA_ "GenMsgCycleTime" BO_ 273 100;
 BA_ "GenMsgCycleTime" BO_ 274 100;
 BA_ "GenMsgCycleTime" BO_ 288 200;
 BA_ "GenMsgCycleTime" BO_ 289 200;
 BA_ "GenMsgCycleTime" BO_ 290 200;
+BA_ "GenMsgCycleTime" BO_ 292 1000;
+BA_ "GenMsgCycleTime" BO_ 293 1000;
+BA_ "GenMsgCycleTime" BO_ 294 1000;
+BA_ "GenMsgCycleTime" BO_ 295 1000;
+BA_ "GenMsgCycleTime" BO_ 296 1000;
 BA_ "GenMsgCycleTime" BO_ 304 1000;
 BA_ "GenMsgCycleTime" BO_ 320 0;
 BA_ "GenMsgCycleTime" BO_ 511 1000;
+BA_ "GenMsgCycleTime" BO_ 512 0;
+BA_ "GenMsgCycleTime" BO_ 513 0;
+BA_ "GenMsgCycleTime" BO_ 514 0;
 VAL_ 256 SystemState 0 "Init" 1 "Normal" 2 "Warning" 3 "Error" ;
 VAL_ 257 AlertFlag 0 "OK" 1 "LowTempAlert" ;
+VAL_ 258 PG_5V 0 "Fault" 1 "OK" ;
+VAL_ 258 PG_3V3A 0 "Fault" 1 "OK" ;
+VAL_ 258 PG_24V 0 "Fault" 1 "OK" ;
+VAL_ 512 Command 0 "OFF" 1 "ON" 2 "TOGGLE" ;
+VAL_ 514 SystemCommand 0 "NOP" 1 "RESET_STATS" 2 "DISABLE_ALL" 3 "ENABLE_ALL" 254 "REBOOT" ;
 
