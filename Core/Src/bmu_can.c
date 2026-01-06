@@ -549,7 +549,33 @@ void BMU_CAN_RxCallback(CAN_HandleTypeDef* hcan)
 
     // Read message from FIFO0
     if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header, rx_data) == HAL_OK) {
+        // DEBUG: Uncomment to see received CAN messages on UART
+        #if 1
+        extern UART_HandleTypeDef huart1;
+        char debug_buf[150];
+        (void)snprintf(debug_buf, sizeof(debug_buf),
+                      "[CAN RX] ID:0x%03lX DLC:%d Data: %02X %02X %02X %02X %02X %02X %02X %02X\r\n",
+                      rx_header.StdId, rx_header.DLC,
+                      rx_data[0], rx_data[1], rx_data[2], rx_data[3],
+                      rx_data[4], rx_data[5], rx_data[6], rx_data[7]);
+        HAL_UART_Transmit(&huart1, (uint8_t*)debug_buf, strlen(debug_buf), 100);
+        #endif
+
         // Process the received message
-        BMU_CAN_ProcessRxMessage(g_bmu_can_handle, &rx_header, rx_data);
+        HAL_StatusTypeDef result = BMU_CAN_ProcessRxMessage(g_bmu_can_handle, &rx_header, rx_data);
+
+        // DEBUG: Report processing result
+        #if 1
+        if (result != HAL_OK) {
+            char err_buf[50];
+            (void)snprintf(err_buf, sizeof(err_buf), "[CAN RX] Processing FAILED! Errors: %lu\r\n",
+                          g_bmu_can_handle->error_count);
+            HAL_UART_Transmit(&huart1, (uint8_t*)err_buf, strlen(err_buf), 100);
+        } else {
+            char ok_buf[30];
+            (void)snprintf(ok_buf, sizeof(ok_buf), "[CAN RX] OK\r\n");
+            HAL_UART_Transmit(&huart1, (uint8_t*)ok_buf, strlen(ok_buf), 100);
+        }
+        #endif
     }
 }
