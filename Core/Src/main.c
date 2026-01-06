@@ -55,6 +55,7 @@ uint32_t i_mA;
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
+DMA_HandleTypeDef hdma_adc1;
 
 CAN_HandleTypeDef hcan1;
 CAN_HandleTypeDef hcan2;
@@ -260,9 +261,10 @@ int main(void)
       HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
   }
 
-  /* Inicializacija ADC DMA (NOTE: potrebuje DMA konfiguracija v CubeMX) */
-  // ADC_DMA_Init(&hadc_dma, &hadc1, NULL);  // Zakomentirano - potrebno DMA setup
-  // ADC_DMA_Start(&hadc_dma);
+  /* Inicializacija ADC DMA - avtomatsko kontinuirano branje vseh 16 kanalov */
+  if (ADC_DMA_Init(&hadc_dma, &hadc1, &hdma_adc1) == HAL_OK) {
+    ADC_DMA_Start(&hadc_dma);
+  }
 
   /* inicializacija BTT6200 modulov */
   BTT6200_Config_Init(&hadc1);   // ali &hadc, isto kot si nastavil v config.c
@@ -323,6 +325,28 @@ int main(void)
 	      uint8_t err[] = "Temperature read FAILED!\r\n";
 	      HAL_UART_Transmit(&huart1, err, sizeof(err)-1, 100);
 	  }
+
+	  // ADC DMA Debug: Prikaz ADC surovih vrednosti in DMA statistike
+	  #if 0  // Set to 1 to enable ADC DMA debug output
+	  if (hadc_dma.is_initialized) {
+	      uint32_t conv_count, error_count;
+	      if (ADC_DMA_GetStats(&hadc_dma, &conv_count, &error_count) == HAL_OK) {
+	          (void)snprintf(uart_buf, sizeof(uart_buf), "[ADC DMA] Conv: %lu, Errors: %lu\r\n", conv_count, error_count);
+	          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+	      }
+
+	      // Prikaz surovih ADC vrednosti za LEM senzorje 1-3
+	      uint16_t adc_value;
+	      for (uint8_t i = 0; i < 3; i++) {
+	          if (ADC_DMA_GetValue(&hadc_dma, (ADC_DMA_Channel_t)i, &adc_value) == HAL_OK) {
+	              (void)snprintf(uart_buf, sizeof(uart_buf), "ADC_CH%d: %4u  ", i, adc_value);
+	              HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+	          }
+	      }
+	      uint8_t nl[] = "\r\n";
+	      HAL_UART_Transmit(&huart1, nl, sizeof(nl)-1, 100);
+	  }
+	  #endif
 
 	  // Preberi LEM sensorje (prikaz prvih 3 za demo)
 	  float lem_currents[3];
@@ -567,29 +591,79 @@ static void MX_ADC1_Init(void)
   hadc1.Instance = ADC1;
   hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc1.Init.ScanConvMode = DISABLE;
-  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.ScanConvMode = ENABLE;                    // Enable for multiple channels
+  hadc1.Init.ContinuousConvMode = ENABLE;              // Enable for continuous conversion
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.NbrOfConversion = 1;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
-  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc1.Init.NbrOfConversion = 16;                     // 16 channels total
+  hadc1.Init.DMAContinuousRequests = ENABLE;           // Enable DMA continuous requests
+  hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV;          // End of sequence
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
     Error_Handler();
   }
 
-  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  /** Configure all 16 ADC channels in sequence
+   *  Channels mapped to:
+   *  - IN0-IN9: LEM sensors 1-10 (PA0-PA7, PB0-PB1)
+   *  - IN10-IN14: BTT6200 IS channels 0-4 (PC0-PC4)
+   *  - IN15: Power current (PC5)
   */
-  sConfig.Channel = ADC_CHANNEL_0;
-  sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
+  sConfig.SamplingTime = ADC_SAMPLETIME_15CYCLES;
+
+  // LEM sensors (IN0-IN9)
+  sConfig.Channel = ADC_CHANNEL_0; sConfig.Rank = 1;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) { Error_Handler(); }
+
+  sConfig.Channel = ADC_CHANNEL_1; sConfig.Rank = 2;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) { Error_Handler(); }
+
+  sConfig.Channel = ADC_CHANNEL_2; sConfig.Rank = 3;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) { Error_Handler(); }
+
+  sConfig.Channel = ADC_CHANNEL_3; sConfig.Rank = 4;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) { Error_Handler(); }
+
+  sConfig.Channel = ADC_CHANNEL_4; sConfig.Rank = 5;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) { Error_Handler(); }
+
+  sConfig.Channel = ADC_CHANNEL_5; sConfig.Rank = 6;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) { Error_Handler(); }
+
+  sConfig.Channel = ADC_CHANNEL_6; sConfig.Rank = 7;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) { Error_Handler(); }
+
+  sConfig.Channel = ADC_CHANNEL_7; sConfig.Rank = 8;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) { Error_Handler(); }
+
+  sConfig.Channel = ADC_CHANNEL_8; sConfig.Rank = 9;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) { Error_Handler(); }
+
+  sConfig.Channel = ADC_CHANNEL_9; sConfig.Rank = 10;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) { Error_Handler(); }
+
+  // BTT6200 IS channels (IN10-IN14)
+  sConfig.Channel = ADC_CHANNEL_10; sConfig.Rank = 11;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) { Error_Handler(); }
+
+  sConfig.Channel = ADC_CHANNEL_11; sConfig.Rank = 12;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) { Error_Handler(); }
+
+  sConfig.Channel = ADC_CHANNEL_12; sConfig.Rank = 13;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) { Error_Handler(); }
+
+  sConfig.Channel = ADC_CHANNEL_13; sConfig.Rank = 14;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) { Error_Handler(); }
+
+  sConfig.Channel = ADC_CHANNEL_14; sConfig.Rank = 15;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) { Error_Handler(); }
+
+  // Power current (IN15)
+  sConfig.Channel = ADC_CHANNEL_15; sConfig.Rank = 16;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) { Error_Handler(); }
+
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
