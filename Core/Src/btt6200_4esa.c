@@ -14,6 +14,10 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "btt6200_4esa.h"
+#include "adc_dma.h"
+
+/* External variables --------------------------------------------------------*/
+extern ADC_DMA_HandleTypeDef hadc_dma;  // From main.c - ADC DMA handle
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -147,24 +151,39 @@ HAL_StatusTypeDef BTT6200_ReadChannelCurrent(BTT6200_HandleTypeDef* handle,
     // Počakaj krajši čas za stabilizacijo (priporočeno iz datasheeta)
     HAL_Delay(1);
 
-    // Preberi ADC vrednost
-    ADC_ChannelConfTypeDef sConfig = {0};
-    sConfig.Channel = handle->is_adc_channel;
-    sConfig.Rank = 1;
-    sConfig.SamplingTime = ADC_SAMPLETIME_480CYCLES;
+    // Preberi ADC vrednost iz DMA bufferja (instant read, no conversion delay)
+    uint16_t adc_value_16;
+    uint32_t adc_value;
 
-    if (HAL_ADC_ConfigChannel(handle->hadc, &sConfig) != HAL_OK) {
-        return HAL_ERROR;
-    }
+    if (hadc_dma.is_initialized) {
+        // Read from DMA circular buffer
+        // is_adc_channel is ADC_CHANNEL_10-14, which map to DMA buffer indices 10-14
+        // ADC_CHANNEL_10 = 10, ADC_CHANNEL_11 = 11, etc.
+        if (ADC_DMA_GetValue(&hadc_dma, (ADC_DMA_Channel_t)handle->is_adc_channel, &adc_value_16) == HAL_OK) {
+            adc_value = adc_value_16;
+        } else {
+            return HAL_ERROR;
+        }
+    } else {
+        // Fallback: DMA not initialized, use direct ADC reading (slower)
+        ADC_ChannelConfTypeDef sConfig = {0};
+        sConfig.Channel = handle->is_adc_channel;
+        sConfig.Rank = 1;
+        sConfig.SamplingTime = ADC_SAMPLETIME_480CYCLES;
 
-    HAL_ADC_Start(handle->hadc);
-    if (HAL_ADC_PollForConversion(handle->hadc, 100) != HAL_OK) {
+        if (HAL_ADC_ConfigChannel(handle->hadc, &sConfig) != HAL_OK) {
+            return HAL_ERROR;
+        }
+
+        HAL_ADC_Start(handle->hadc);
+        if (HAL_ADC_PollForConversion(handle->hadc, 100) != HAL_OK) {
+            HAL_ADC_Stop(handle->hadc);
+            return HAL_ERROR;
+        }
+
+        adc_value = HAL_ADC_GetValue(handle->hadc);
         HAL_ADC_Stop(handle->hadc);
-        return HAL_ERROR;
     }
-
-    uint32_t adc_value = HAL_ADC_GetValue(handle->hadc);
-    HAL_ADC_Stop(handle->hadc);
 
     // Pretvori ADC vrednost v napetost (mV)
     // Assuming 3.3V reference, 12-bit ADC

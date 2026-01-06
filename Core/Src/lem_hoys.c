@@ -7,8 +7,12 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "lem_hoys.h"
+#include "adc_dma.h"
 #include <string.h>
 #include <math.h>
+
+/* External variables --------------------------------------------------------*/
+extern ADC_DMA_HandleTypeDef hadc_dma;  // From main.c - ADC DMA handle
 
 /* Private defines -----------------------------------------------------------*/
 #define LEM_ADC_TIMEOUT         100     // ms
@@ -189,40 +193,56 @@ HAL_StatusTypeDef LEM_HOYS_ReadRawADC(LEM_HOYS_HandleTypeDef* handle,
         return HAL_ERROR;
     }
 
-    ADC_ChannelConfTypeDef sConfig = {0};
-    sConfig.Channel = handle->adc_channel;
-    sConfig.Rank = 1;
-    sConfig.SamplingTime = ADC_SAMPLETIME_84CYCLES;  // Medium sampling time
+    // Read from ADC DMA buffer instead of direct ADC conversion
+    // DMA continuously updates buffer in background, so this is instant
+    // LEM sensors 1-10 map to ADC channels IN0-IN9 (sensor_id 0-9)
+    if (hadc_dma.is_initialized) {
+        // Read from DMA circular buffer
+        if (ADC_DMA_GetValue(&hadc_dma, (ADC_DMA_Channel_t)handle->sensor_id, adc_value) == HAL_OK) {
+            // Clear ADC error flag
+            handle->status &= ~LEM_STATUS_ADC_ERROR;
+            return HAL_OK;
+        } else {
+            handle->status |= LEM_STATUS_ADC_ERROR;
+            return HAL_ERROR;
+        }
+    } else {
+        // Fallback: DMA not initialized, use direct ADC reading (slower)
+        ADC_ChannelConfTypeDef sConfig = {0};
+        sConfig.Channel = handle->adc_channel;
+        sConfig.Rank = 1;
+        sConfig.SamplingTime = ADC_SAMPLETIME_84CYCLES;  // Medium sampling time
 
-    // Configure ADC channel
-    if (HAL_ADC_ConfigChannel(handle->hadc, &sConfig) != HAL_OK) {
-        handle->status |= LEM_STATUS_ADC_ERROR;
-        return HAL_ERROR;
-    }
+        // Configure ADC channel
+        if (HAL_ADC_ConfigChannel(handle->hadc, &sConfig) != HAL_OK) {
+            handle->status |= LEM_STATUS_ADC_ERROR;
+            return HAL_ERROR;
+        }
 
-    // Start ADC conversion
-    if (HAL_ADC_Start(handle->hadc) != HAL_OK) {
-        handle->status |= LEM_STATUS_ADC_ERROR;
-        return HAL_ERROR;
-    }
+        // Start ADC conversion
+        if (HAL_ADC_Start(handle->hadc) != HAL_OK) {
+            handle->status |= LEM_STATUS_ADC_ERROR;
+            return HAL_ERROR;
+        }
 
-    // Wait for conversion
-    if (HAL_ADC_PollForConversion(handle->hadc, LEM_ADC_TIMEOUT) != HAL_OK) {
-        handle->status |= LEM_STATUS_ADC_ERROR;
+        // Wait for conversion
+        if (HAL_ADC_PollForConversion(handle->hadc, LEM_ADC_TIMEOUT) != HAL_OK) {
+            handle->status |= LEM_STATUS_ADC_ERROR;
+            HAL_ADC_Stop(handle->hadc);
+            return HAL_ERROR;
+        }
+
+        // Get ADC value
+        *adc_value = HAL_ADC_GetValue(handle->hadc);
+
+        // Stop ADC
         HAL_ADC_Stop(handle->hadc);
-        return HAL_ERROR;
+
+        // Clear ADC error flag
+        handle->status &= ~LEM_STATUS_ADC_ERROR;
+
+        return HAL_OK;
     }
-
-    // Get ADC value
-    *adc_value = HAL_ADC_GetValue(handle->hadc);
-
-    // Stop ADC
-    HAL_ADC_Stop(handle->hadc);
-
-    // Clear ADC error flag
-    handle->status &= ~LEM_STATUS_ADC_ERROR;
-
-    return HAL_OK;
 }
 
 /**
