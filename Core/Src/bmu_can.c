@@ -436,8 +436,9 @@ HAL_StatusTypeDef BMU_CAN_ProcessRxMessage(BMU_CAN_HandleTypeDef* handle,
                 new_state = true;
             } else if (cmd.command == BMU_CMD_OUTPUT_TOGGLE) {
                 // Read current state and toggle
+                // STATUS_OK means enabled, STATUS_DISABLED means disabled
                 BTT6200_Status_t current_status = BTT6200_Config_GetStatus(cmd.output_id);
-                new_state = (current_status != BTT6200_STATUS_ON);
+                new_state = (current_status == BTT6200_STATUS_DISABLED);
             } else {
                 handle->error_count++;
                 return HAL_ERROR;

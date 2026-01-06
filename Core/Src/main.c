@@ -431,10 +431,11 @@ int main(void)
 	          BMU_BTT6200_Detailed_Msg_t btt_detail = {0};
 	          uint8_t base_out = msg_idx * 4;
 
-	          btt_detail.out0_state = (BTT6200_Config_GetStatus(base_out + 0) == BTT6200_STATUS_ON) ? 1 : 0;
-	          btt_detail.out1_state = (BTT6200_Config_GetStatus(base_out + 1) == BTT6200_STATUS_ON) ? 1 : 0;
-	          btt_detail.out2_state = (BTT6200_Config_GetStatus(base_out + 2) == BTT6200_STATUS_ON) ? 1 : 0;
-	          btt_detail.out3_state = (BTT6200_Config_GetStatus(base_out + 3) == BTT6200_STATUS_ON) ? 1 : 0;
+	          // STATUS_OK means channel is enabled and working
+	          btt_detail.out0_state = (BTT6200_Config_GetStatus(base_out + 0) == BTT6200_STATUS_OK) ? 1U : 0U;
+	          btt_detail.out1_state = (BTT6200_Config_GetStatus(base_out + 1) == BTT6200_STATUS_OK) ? 1U : 0U;
+	          btt_detail.out2_state = (BTT6200_Config_GetStatus(base_out + 2) == BTT6200_STATUS_OK) ? 1U : 0U;
+	          btt_detail.out3_state = (BTT6200_Config_GetStatus(base_out + 3) == BTT6200_STATUS_OK) ? 1U : 0U;
 
 	          uint32_t curr_mA;
 	          BTT6200_Config_ReadCurrent(base_out + 0, &curr_mA);

@@ -35,6 +35,12 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
+/* Exported constants - must be defined before struct -------------------------*/
+
+// Filtering
+#define LEM_FILTER_SAMPLES_DEFAULT  8       // Moving average filter depth
+#define LEM_MAX_FILTER_SAMPLES      32      // Maximum filter buffer size
+
 /* Exported types ------------------------------------------------------------*/
 
 /**
@@ -130,10 +136,6 @@ typedef struct {
 // ADC configuration
 #define LEM_ADC_RESOLUTION_12BIT    4096
 #define LEM_VREF_VOLTAGE            3.3f    // V
-
-// Filtering
-#define LEM_FILTER_SAMPLES_DEFAULT  8       // Moving average filter depth
-#define LEM_MAX_FILTER_SAMPLES      32      // Maximum filter buffer size
 
 // Overcurrent detection
 #define LEM_OC_DEBOUNCE_MS          10      // Debounce time for OC pin
