@@ -55,8 +55,9 @@ HAL_StatusTypeDef TempLogger_Init(TempLogger_HandleTypeDef* handle,
         // CY15B256J_Fill(hfram, handle->log_start_addr, 0xFF,
         //                handle->log_capacity * sizeof(TempLog_Entry_t));
     } else {
-        // Preberi obstoječe statistike iz FRAM
-        TempLogger_ReadStats(handle);
+        // Preberi obstoječe statistike iz FRAM (validate they exist)
+        TempLog_Stats_t stats;
+        TempLogger_ReadStats(handle, &stats);
     }
 
     handle->is_initialized = true;

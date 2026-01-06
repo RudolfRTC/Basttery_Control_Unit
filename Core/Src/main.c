@@ -71,7 +71,7 @@ static TMP1075_HandleTypeDef htmp1075;
 static CY15B256J_HandleTypeDef hfram;
 static TempLogger_HandleTypeDef htemplogger;
 static BMU_CAN_HandleTypeDef hbmucan;
-static ADC_DMA_HandleTypeDef hadc_dma;
+ADC_DMA_HandleTypeDef hadc_dma;  // Non-static - used by lem_hoys.c and btt6200_4esa.c
 
 // CAN message counters
 static uint32_t can_heartbeat_counter = 0;
