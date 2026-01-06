@@ -14,7 +14,8 @@
 
 /* Private function prototypes -----------------------------------------------*/
 static HAL_StatusTypeDef TempLogger_WriteStats(TempLogger_HandleTypeDef* handle);
-static HAL_StatusTypeDef TempLogger_ReadStats(TempLogger_HandleTypeDef* handle);
+static HAL_StatusTypeDef TempLogger_ReadStats(TempLogger_HandleTypeDef* handle,
+                                              TempLog_Stats_t* stats);
 static HAL_StatusTypeDef TempLogger_WriteEntry(TempLogger_HandleTypeDef* handle,
                                                TempLog_Entry_t* entry);
 
@@ -84,9 +85,9 @@ HAL_StatusTypeDef TempLogger_LogTemperature(TempLogger_HandleTypeDef* handle,
     HAL_StatusTypeDef status = TempLogger_WriteEntry(handle, &entry);
     if (status != HAL_OK) return status;
 
-    // Posodobi statistike v RAM
+    // Posodobi statistike - preberi trenutne vrednosti iz FRAM
     TempLog_Stats_t stats;
-    status = TempLogger_ReadStats(handle);
+    status = TempLogger_ReadStats(handle, &stats);
     if (status != HAL_OK) return status;
 
     stats.current_temp = temperature;
@@ -215,12 +216,16 @@ static HAL_StatusTypeDef TempLogger_WriteEntry(TempLogger_HandleTypeDef* handle,
 /**
   * @brief  Preberi statistike (internal)
   */
-static HAL_StatusTypeDef TempLogger_ReadStats(TempLogger_HandleTypeDef* handle)
+static HAL_StatusTypeDef TempLogger_ReadStats(TempLogger_HandleTypeDef* handle,
+                                              TempLog_Stats_t* stats)
 {
-    TempLog_Stats_t stats;
+    if (stats == NULL) {
+        return HAL_ERROR;
+    }
+
     HAL_StatusTypeDef status = CY15B256J_Read(handle->hfram,
                                              handle->stats_addr,
-                                             (uint8_t*)&stats,
+                                             (uint8_t*)stats,
                                              sizeof(TempLog_Stats_t));
     return status;
 }
