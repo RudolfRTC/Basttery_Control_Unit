@@ -391,18 +391,33 @@ int main(void)
 	      pwr_msg.pg_3v3a = HAL_GPIO_ReadPin(PG_3V3A_GPIO_Port, PG_3V3A_Pin);
 	      pwr_msg.pwr_sleep_state = HAL_GPIO_ReadPin(PWR_SLEEP_GPIO_Port, PWR_SLEEP_Pin);
 
-	      /* TODO: Implement PWR_VOLTAGE and PWR_CURRENT ADC measurements
-	       * PWR_CURRENT: ADC_IN15 (PC5) - requires voltage divider circuit
-	       * PWR_VOLTAGE: Not currently configured - add ADC channel in CubeMX
+	      /* PWR_CURRENT: Read from ADC_IN15 (PC5) via DMA
+	       * PWR_VOLTAGE: Not configured in hardware - using nominal value
 	       *
-	       * Recommended implementation:
-	       * 1. Configure ADC channels for voltage and current sensing
-	       * 2. Add voltage divider calculations based on hardware design
-	       * 3. Use moving average filter for stable readings
+	       * NOTE: Za pravo merjenje 24V napetosti je potreben:
+	       * 1. Voltage divider circuit (npr. 10k/1k = 11:1 ratio za 24V->2.18V)
+	       * 2. Dodaten ADC kanal v CubeMX konfiguraciji
+	       * 3. Kalibracija voltage divider faktorja
 	       */
-	      pwr_msg.pwr_voltage_mV = 24000U;  // Placeholder - nominal 24V
-	      pwr_msg.pwr_current_mA = 0U;      // Placeholder - implement ADC read
-	      pwr_msg.pg_24v = (pwr_msg.pwr_voltage_mV > 20000) ? 1 : 0;
+
+	      // Read PWR_CURRENT from ADC DMA buffer (IN15)
+	      uint16_t pwr_current_adc = 0;
+	      if (hadc_dma.is_initialized) {
+	          ADC_DMA_GetValue(&hadc_dma, ADC_DMA_PWR_CURRENT, &pwr_current_adc);
+	      }
+
+	      // Convert ADC to current (assuming current sense resistor circuit)
+	      // TODO: Adjust conversion factor based on hardware design
+	      // Typical: V_adc = (I_load * R_sense * Gain) where R_sense ~0.1 ohm, Gain=50
+	      // I_load = V_adc / (R_sense * Gain)
+	      // For 3.3V ref, 12-bit ADC: V_adc = (adc_value * 3300) / 4095
+	      uint32_t voltage_uV = ((uint32_t)pwr_current_adc * 3300000UL) / 4095UL;
+	      pwr_msg.pwr_current_mA = (uint16_t)(voltage_uV / 5000UL);  // Adjust divisor based on R_sense and gain
+
+	      // PWR_VOLTAGE: Use nominal value (no ADC sensing configured)
+	      // Alternative: Could monitor PG_24V flag and return 0 if power fault
+	      pwr_msg.pwr_voltage_mV = 24000U;  // Nominal 24V (hardware sensing not implemented)
+	      pwr_msg.pg_24v = (pwr_msg.pwr_voltage_mV > 20000U) ? 1U : 0U;
 	      BMU_CAN_SendPowerSupply(&hbmucan, &pwr_msg);
 
 	      // 3. Pošlji Input States (0x103)
