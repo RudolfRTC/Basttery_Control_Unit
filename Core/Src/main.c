@@ -30,6 +30,7 @@
 #include "lem_config.h"
 #include "bmu_can.h"
 #include "adc_dma.h"
+#include "can_diagnostics.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -242,6 +243,11 @@ int main(void)
       uint32_t can_error = HAL_CAN_GetError(&hcan1);
       (void)snprintf(uart_buf, sizeof(uart_buf), "CAN1 Error Code: 0x%08lX\r\n", can_error);
       HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+
+      /* DIAGNOSTICS: Uncomment to run full CAN diagnostics */
+      #if 1  // Set to 1 to enable CAN diagnostics, 0 to disable
+      CAN_RunDiagnostics(&hcan1, &huart1);
+      #endif
   } else {
       uint8_t can_fail[] = "CAN initialization FAILED!\r\n";
       HAL_UART_Transmit(&huart1, can_fail, sizeof(can_fail)-1, 100);
