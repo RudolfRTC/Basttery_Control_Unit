@@ -7,13 +7,11 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "lem_hoys.h"
-#include <stdlib.h>
 #include <string.h>
 #include <math.h>
 
 /* Private defines -----------------------------------------------------------*/
 #define LEM_ADC_TIMEOUT         100     // ms
-#define LEM_MAX_FILTER_SAMPLES  32      // Maximum filter buffer size
 
 /* Private function prototypes -----------------------------------------------*/
 static HAL_StatusTypeDef LEM_ConfigureADC(LEM_HOYS_HandleTypeDef* handle);
@@ -418,35 +416,28 @@ static float LEM_GetMaxCurrent(LEM_HOYS_Model_t model)
 }
 
 /**
-  * @brief  Allocate filter buffer
+  * @brief  Initialize filter buffer (static allocation for MISRA C compliance)
   */
 static HAL_StatusTypeDef LEM_AllocateFilterBuffer(LEM_HOYS_HandleTypeDef* handle)
 {
-    if (handle->filter_samples == 0) {
+    if (handle->filter_samples == 0U || handle->filter_samples > LEM_MAX_FILTER_SAMPLES) {
         return HAL_ERROR;
     }
 
-    handle->filter_buffer = (float*)malloc(handle->filter_samples * sizeof(float));
-
-    if (handle->filter_buffer == NULL) {
-        return HAL_ERROR;
-    }
-
-    // Initialize buffer to zero
-    memset(handle->filter_buffer, 0, handle->filter_samples * sizeof(float));
+    // Initialize buffer to zero (static array, no malloc needed)
+    (void)memset(handle->filter_buffer, 0, sizeof(handle->filter_buffer));
 
     return HAL_OK;
 }
 
 /**
-  * @brief  Free filter buffer
+  * @brief  Clear filter buffer (no deallocation needed - static array)
   */
 static void LEM_FreeFilterBuffer(LEM_HOYS_HandleTypeDef* handle)
 {
-    if (handle->filter_buffer != NULL) {
-        free(handle->filter_buffer);
-        handle->filter_buffer = NULL;
-    }
+    /* MISRA C 2012 Rule 21.3: No dynamic memory - static buffer, nothing to free */
+    /* This function kept for API compatibility but does nothing */
+    (void)handle;  /* Suppress unused parameter warning */
 }
 
 /**

@@ -185,12 +185,12 @@ int main(void)
           // Izpiši trenutne statistike
           TempLog_Stats_t stats;
           if (TempLogger_GetStats(&htemplogger, &stats) == HAL_OK) {
-              sprintf(uart_buf, "Stored samples: %lu, Alerts: %lu\r\n",
+              (void)snprintf(uart_buf, sizeof(uart_buf), "Stored samples: %lu, Alerts: %lu\r\n",
                       stats.sample_count, stats.alert_count);
               HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 
               if (stats.sample_count > 0) {
-                  sprintf(uart_buf, "Min: %d.%02dC, Max: %d.%02dC\r\n",
+                  (void)snprintf(uart_buf, sizeof(uart_buf), "Min: %d.%02dC, Max: %d.%02dC\r\n",
                           stats.min_temp/100, abs(stats.min_temp%100),
                           stats.max_temp/100, abs(stats.max_temp%100));
                   HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
@@ -230,12 +230,28 @@ int main(void)
   uint8_t can_msg[] = "\r\n=== CAN Bus Protocol ===\r\n";
   HAL_UART_Transmit(&huart1, can_msg, sizeof(can_msg)-1, 100);
 
+  // Debug: Preveri CAN1 state pred inicializacijo
+  (void)snprintf(uart_buf, sizeof(uart_buf), "CAN1 State before init: 0x%02X\r\n", hcan1.State);
+  HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+
   if (BMU_CAN_Init(&hbmucan, &hcan1, &hcan2) == HAL_OK) {
       uint8_t can_ok[] = "CAN bus initialized OK (500 kbps)\r\n";
       HAL_UART_Transmit(&huart1, can_ok, sizeof(can_ok)-1, 100);
+
+      // Debug: Preveri CAN1 error code
+      uint32_t can_error = HAL_CAN_GetError(&hcan1);
+      (void)snprintf(uart_buf, sizeof(uart_buf), "CAN1 Error Code: 0x%08lX\r\n", can_error);
+      HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
   } else {
       uint8_t can_fail[] = "CAN initialization FAILED!\r\n";
       HAL_UART_Transmit(&huart1, can_fail, sizeof(can_fail)-1, 100);
+
+      // Debug: Izpiši error code
+      uint32_t can_error = HAL_CAN_GetError(&hcan1);
+      (void)snprintf(uart_buf, sizeof(uart_buf), "CAN1 Error Code: 0x%08lX\r\n", can_error);
+      HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+      (void)snprintf(uart_buf, sizeof(uart_buf), "CAN1 State: 0x%02X\r\n", hcan1.State);
+      HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
   }
 
   /* Inicializacija ADC DMA (NOTE: potrebuje DMA konfiguracija v CubeMX) */
@@ -264,6 +280,8 @@ int main(void)
 
 	  // Preberi in izpiši temperaturo
 	  float tC = 0.0f;
+	  int16_t temp_x100 = 0;  // Deklarirano zunaj if bloka za CAN
+	  bool is_alert = false;   // Deklarirano zunaj if bloka za CAN
 	  if (TMP1075_ReadTemperature(&htmp1075, &tC) == HAL_OK) {
 	      // Uspešno branje temperature
 	      int temp_int = (int)tC;
@@ -271,8 +289,8 @@ int main(void)
 	      if (temp_frac < 0) temp_frac = -temp_frac;  // Absolutna vrednost za decimale
 
 	      // Konvertiraj v int16_t (°C × 100) za shranjevanje v FRAM
-	      int16_t temp_x100 = (int16_t)(tC * 100.0f);
-	      bool is_alert = (tC < 0.0f);
+	      temp_x100 = (int16_t)(tC * 100.0f);
+	      is_alert = (tC < 0.0f);
 
 	      // Shrani v FRAM (če je inicializiran)
 	      if (htemplogger.is_initialized) {
@@ -283,7 +301,7 @@ int main(void)
 
 	      // ALERT: Temperatura pod 0°C
 	      if (is_alert) {
-	          sprintf(uart_buf, "*** ALERT! Temperature: %d.%02d C (BELOW 0C!) ***\r\n", temp_int, temp_frac);
+	          (void)snprintf(uart_buf, sizeof(uart_buf), "*** ALERT! Temperature: %d.%02d C (BELOW 0C!) ***\r\n", temp_int, temp_frac);
 	          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 	          // Prižgi LED - hitro utripanje za alarm
 	          HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, SET);
@@ -292,7 +310,7 @@ int main(void)
 	          HAL_Delay(100);
 	          HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, SET);
 	      } else {
-	          sprintf(uart_buf, "Temperature: %d.%02d C\r\n", temp_int, temp_frac);
+	          (void)snprintf(uart_buf, sizeof(uart_buf), "Temperature: %d.%02d C\r\n", temp_int, temp_frac);
 	          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 	      }
 	  } else {
@@ -306,7 +324,7 @@ int main(void)
 	      if (LEM_Config_ReadCurrentFiltered(i, &lem_currents[i]) == HAL_OK) {
 	          int curr_int = (int)lem_currents[i];
 	          int curr_frac = (int)(fabsf(lem_currents[i] - curr_int) * 1000);
-	          sprintf(uart_buf, "LEM_%d: %d.%03d A  ", i+1, curr_int, curr_frac);
+	          (void)snprintf(uart_buf, sizeof(uart_buf), "LEM_%d: %d.%03d A  ", i+1, curr_int, curr_frac);
 	          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 	      }
 	  }
@@ -317,7 +335,7 @@ int main(void)
 	  uint16_t oc_flags = 0;
 	  LEM_Config_CheckOvercurrents(&oc_flags);
 	  if (oc_flags != 0) {
-	      sprintf(uart_buf, "*** OVERCURRENT DETECTED! Flags: 0x%04X ***\r\n", oc_flags);
+	      (void)snprintf(uart_buf, sizeof(uart_buf), "*** OVERCURRENT DETECTED! Flags: 0x%04X ***\r\n", oc_flags);
 	      HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 	  }
 
@@ -337,27 +355,114 @@ int main(void)
 	      }
 	      BMU_CAN_SendTemperature(&hbmucan, &temp_msg);
 
-	      // 2. Pošlji LEM Current messages (0x110-0x112)
+	      // 2. Pošlji Power Supply Status (0x102)
+	      BMU_PowerSupply_Msg_t pwr_msg = {0};
+	      pwr_msg.pg_5v = HAL_GPIO_ReadPin(PG_5V_GPIO_Port, PG_5V_Pin);
+	      pwr_msg.pg_3v3a = HAL_GPIO_ReadPin(PG_3V3A_GPIO_Port, PG_3V3A_Pin);
+	      pwr_msg.pwr_sleep_state = HAL_GPIO_ReadPin(PWR_SLEEP_GPIO_Port, PWR_SLEEP_Pin);
+
+	      /* TODO: Implement PWR_VOLTAGE and PWR_CURRENT ADC measurements
+	       * PWR_CURRENT: ADC_IN15 (PC5) - requires voltage divider circuit
+	       * PWR_VOLTAGE: Not currently configured - add ADC channel in CubeMX
+	       *
+	       * Recommended implementation:
+	       * 1. Configure ADC channels for voltage and current sensing
+	       * 2. Add voltage divider calculations based on hardware design
+	       * 3. Use moving average filter for stable readings
+	       */
+	      pwr_msg.pwr_voltage_mV = 24000U;  // Placeholder - nominal 24V
+	      pwr_msg.pwr_current_mA = 0U;      // Placeholder - implement ADC read
+	      pwr_msg.pg_24v = (pwr_msg.pwr_voltage_mV > 20000) ? 1 : 0;
+	      BMU_CAN_SendPowerSupply(&hbmucan, &pwr_msg);
+
+	      // 3. Pošlji Input States (0x103)
+	      BMU_InputStates_Msg_t input_msg = {0};
+	      input_msg.input_states = 0;
+	      // Preberi vseh 20 digitalnih inputov (IN_1 do IN_20)
+	      if (HAL_GPIO_ReadPin(IN_1_GPIO_Port, IN_1_Pin)) input_msg.input_states |= (1 << 0);
+	      if (HAL_GPIO_ReadPin(IN_2_GPIO_Port, IN_2_Pin)) input_msg.input_states |= (1 << 1);
+	      if (HAL_GPIO_ReadPin(IN_3_GPIO_Port, IN_3_Pin)) input_msg.input_states |= (1 << 2);
+	      if (HAL_GPIO_ReadPin(IN_4_GPIO_Port, IN_4_Pin)) input_msg.input_states |= (1 << 3);
+	      if (HAL_GPIO_ReadPin(IN_5_GPIO_Port, IN_5_Pin)) input_msg.input_states |= (1 << 4);
+	      if (HAL_GPIO_ReadPin(IN_6_GPIO_Port, IN_6_Pin)) input_msg.input_states |= (1 << 5);
+	      if (HAL_GPIO_ReadPin(IN_7_GPIO_Port, IN_7_Pin)) input_msg.input_states |= (1 << 6);
+	      if (HAL_GPIO_ReadPin(IN_8_GPIO_Port, IN_8_Pin)) input_msg.input_states |= (1 << 7);
+	      if (HAL_GPIO_ReadPin(IN_9_GPIO_Port, IN_9_Pin)) input_msg.input_states |= (1 << 8);
+	      if (HAL_GPIO_ReadPin(IN_10_GPIO_Port, IN_10_Pin)) input_msg.input_states |= (1 << 9);
+	      if (HAL_GPIO_ReadPin(IN_11_GPIO_Port, IN_11_Pin)) input_msg.input_states |= (1 << 10);
+	      if (HAL_GPIO_ReadPin(IN_12_GPIO_Port, IN_12_Pin)) input_msg.input_states |= (1 << 11);
+	      if (HAL_GPIO_ReadPin(IN_13_GPIO_Port, IN_13_Pin)) input_msg.input_states |= (1 << 12);
+	      if (HAL_GPIO_ReadPin(IN_14_GPIO_Port, IN_14_Pin)) input_msg.input_states |= (1 << 13);
+	      if (HAL_GPIO_ReadPin(IN_15_GPIO_Port, IN_15_Pin)) input_msg.input_states |= (1 << 14);
+	      if (HAL_GPIO_ReadPin(IN_16_GPIO_Port, IN_16_Pin)) input_msg.input_states |= (1 << 15);
+	      if (HAL_GPIO_ReadPin(IN_17_GPIO_Port, IN_17_Pin)) input_msg.input_states |= (1 << 16);
+	      if (HAL_GPIO_ReadPin(IN_18_GPIO_Port, IN_18_Pin)) input_msg.input_states |= (1 << 17);
+	      if (HAL_GPIO_ReadPin(IN_19_GPIO_Port, IN_19_Pin)) input_msg.input_states |= (1 << 18);
+	      if (HAL_GPIO_ReadPin(IN_20_GPIO_Port, IN_20_Pin)) input_msg.input_states |= (1 << 19);
+	      BMU_CAN_SendInputStates(&hbmucan, &input_msg);
+
+	      // 4. Pošlji LEM Current messages (0x110-0x112) - FIXED
+	      float all_lem_currents[10];
+	      LEM_Config_ReadAllCurrents(all_lem_currents);
+
 	      BMU_LEM_Current_Msg_t lem_msg1 = {0};
-	      for (uint8_t i = 0; i < 3; i++) {
-	          lem_msg1.current_1_mA = (int16_t)(lem_currents[i] * 1000);
-	      }
+	      lem_msg1.current_1_mA = (int16_t)(all_lem_currents[0] * 1000);
+	      lem_msg1.current_2_mA = (int16_t)(all_lem_currents[1] * 1000);
+	      lem_msg1.current_3_mA = (int16_t)(all_lem_currents[2] * 1000);
+	      lem_msg1.current_4_mA = (int16_t)(all_lem_currents[3] * 1000);
 	      BMU_CAN_SendLEMCurrent(&hbmucan, CAN_ID_LEM_CURRENT_1, &lem_msg1);
 
-	      // 3. Pošlji Heartbeat (0x1FF)
+	      BMU_LEM_Current_Msg_t lem_msg2 = {0};
+	      lem_msg2.current_1_mA = (int16_t)(all_lem_currents[4] * 1000);
+	      lem_msg2.current_2_mA = (int16_t)(all_lem_currents[5] * 1000);
+	      lem_msg2.current_3_mA = (int16_t)(all_lem_currents[6] * 1000);
+	      lem_msg2.current_4_mA = (int16_t)(all_lem_currents[7] * 1000);
+	      BMU_CAN_SendLEMCurrent(&hbmucan, CAN_ID_LEM_CURRENT_2, &lem_msg2);
+
+	      BMU_LEM_Current_Msg_t lem_msg3 = {0};
+	      lem_msg3.current_1_mA = (int16_t)(all_lem_currents[8] * 1000);
+	      lem_msg3.current_2_mA = (int16_t)(all_lem_currents[9] * 1000);
+	      lem_msg3.current_3_mA = 0;
+	      lem_msg3.current_4_mA = 0;
+	      BMU_CAN_SendLEMCurrent(&hbmucan, CAN_ID_LEM_CURRENT_3, &lem_msg3);
+
+	      // 5. Pošlji BTT6200 Detailed Status (0x124-0x128) - vseh 20 outputov
+	      for (uint8_t msg_idx = 0; msg_idx < 5; msg_idx++) {
+	          BMU_BTT6200_Detailed_Msg_t btt_detail = {0};
+	          uint8_t base_out = msg_idx * 4;
+
+	          // STATUS_OK means channel is enabled and working
+	          btt_detail.out0_state = (BTT6200_Config_GetStatus(base_out + 0) == BTT6200_STATUS_OK) ? 1U : 0U;
+	          btt_detail.out1_state = (BTT6200_Config_GetStatus(base_out + 1) == BTT6200_STATUS_OK) ? 1U : 0U;
+	          btt_detail.out2_state = (BTT6200_Config_GetStatus(base_out + 2) == BTT6200_STATUS_OK) ? 1U : 0U;
+	          btt_detail.out3_state = (BTT6200_Config_GetStatus(base_out + 3) == BTT6200_STATUS_OK) ? 1U : 0U;
+
+	          uint32_t curr_mA;
+	          BTT6200_Config_ReadCurrent(base_out + 0, &curr_mA);
+	          btt_detail.out0_current_mA = (uint16_t)curr_mA;
+	          BTT6200_Config_ReadCurrent(base_out + 1, &curr_mA);
+	          btt_detail.out1_current_mA = (uint16_t)curr_mA;
+
+	          BMU_CAN_SendBTTDetailed(&hbmucan, CAN_ID_BTT6200_DETAIL_1 + msg_idx, &btt_detail);
+	      }
+
+	      // 6. Pošlji Heartbeat (0x1FF)
 	      BMU_CAN_SendHeartbeat(&hbmucan, can_heartbeat_counter++);
 
 	      // Debug: CAN stats
 	      if (can_heartbeat_counter % 10 == 0) {
 	          uint32_t tx_count, rx_count, err_count;
 	          BMU_CAN_GetStats(&hbmucan, &tx_count, &rx_count, &err_count);
-	          sprintf(uart_buf, "[CAN] TX:%lu RX:%lu ERR:%lu\r\n", tx_count, rx_count, err_count);
+	          (void)snprintf(uart_buf, sizeof(uart_buf), "[CAN] TX:%lu RX:%lu ERR:%lu\r\n", tx_count, rx_count, err_count);
 	          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 	      }
 	  }
 
+	  // ========== Main Loop Delay ==========
 	  HAL_Delay(1000);
 
+#if 0  /* TEST CODE - Disabled for production */
+	  // BTT6200 channel test sequence (enable manually for testing)
 	  BTT6200_SetChannel(&btt6200_modules[0], BTT6200_CH0, true);
 	  BTT6200_SetChannel(&btt6200_modules[0], BTT6200_CH1, true);
 	  BTT6200_SetChannel(&btt6200_modules[0], BTT6200_CH2, true);
@@ -382,9 +487,12 @@ int main(void)
 	  BTT6200_SetChannel(&btt6200_modules[4], BTT6200_CH1, true);
 	  BTT6200_SetChannel(&btt6200_modules[4], BTT6200_CH2, true);
 	  BTT6200_SetChannel(&btt6200_modules[4], BTT6200_CH3, true);
+	  uint32_t i_mA;
 	  if (BTT6200_ReadChannelCurrent(&btt6200_modules[1], BTT6200_CH1, &i_mA) == HAL_OK) {
 	      // i_mA = tok v mA (po tvoji formuli v driverju)
 	  }
+#endif  /* TEST CODE */
+
   }
   /* USER CODE END 3 */
 }
@@ -498,15 +606,15 @@ static void MX_CAN1_Init(void)
 
   /* USER CODE END CAN1_Init 1 */
   hcan1.Instance = CAN1;
-  hcan1.Init.Prescaler = 6;
+  hcan1.Init.Prescaler = 2;  // 500 kbps: 16MHz / (2 * 16) = 500 kbps
   hcan1.Init.Mode = CAN_MODE_NORMAL;
   hcan1.Init.SyncJumpWidth = CAN_SJW_1TQ;
   hcan1.Init.TimeSeg1 = CAN_BS1_13TQ;
   hcan1.Init.TimeSeg2 = CAN_BS2_2TQ;
   hcan1.Init.TimeTriggeredMode = DISABLE;
-  hcan1.Init.AutoBusOff = DISABLE;
+  hcan1.Init.AutoBusOff = ENABLE;  // Auto recovery iz bus-off
   hcan1.Init.AutoWakeUp = DISABLE;
-  hcan1.Init.AutoRetransmission = DISABLE;
+  hcan1.Init.AutoRetransmission = ENABLE;  // Ponovno pošiljanje
   hcan1.Init.ReceiveFifoLocked = DISABLE;
   hcan1.Init.TransmitFifoPriority = DISABLE;
   if (HAL_CAN_Init(&hcan1) != HAL_OK)
@@ -535,15 +643,15 @@ static void MX_CAN2_Init(void)
 
   /* USER CODE END CAN2_Init 1 */
   hcan2.Instance = CAN2;
-  hcan2.Init.Prescaler = 6;
+  hcan2.Init.Prescaler = 2;  // 500 kbps: 16MHz / (2 * 16) = 500 kbps
   hcan2.Init.Mode = CAN_MODE_NORMAL;
   hcan2.Init.SyncJumpWidth = CAN_SJW_1TQ;
   hcan2.Init.TimeSeg1 = CAN_BS1_13TQ;
   hcan2.Init.TimeSeg2 = CAN_BS2_2TQ;
   hcan2.Init.TimeTriggeredMode = DISABLE;
-  hcan2.Init.AutoBusOff = DISABLE;
+  hcan2.Init.AutoBusOff = ENABLE;  // Auto recovery iz bus-off
   hcan2.Init.AutoWakeUp = DISABLE;
-  hcan2.Init.AutoRetransmission = DISABLE;
+  hcan2.Init.AutoRetransmission = ENABLE;  // Ponovno pošiljanje
   hcan2.Init.ReceiveFifoLocked = DISABLE;
   hcan2.Init.TransmitFifoPriority = DISABLE;
   if (HAL_CAN_Init(&hcan2) != HAL_OK)
@@ -845,6 +953,15 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+/**
+  * @brief  CAN RX FIFO 0 message pending callback
+  */
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef* hcan)
+{
+    // Call BMU CAN RX handler
+    BMU_CAN_RxCallback(hcan);
+}
 
 /* USER CODE END 4 */
 

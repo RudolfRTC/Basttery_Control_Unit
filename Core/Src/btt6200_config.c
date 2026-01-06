@@ -82,7 +82,7 @@ HAL_StatusTypeDef BTT6200_Config_Init(ADC_HandleTypeDef* hadc)
     btt6200_modules[1].dsel0 = (BTT6200_GPIO_t){DSEL0_1_GPIO_Port, DSEL0_1_Pin}; // PD10
     btt6200_modules[1].dsel1 = (BTT6200_GPIO_t){DSEL1_1_GPIO_Port, DSEL1_1_Pin}; // PB15
     btt6200_modules[1].hadc = hadc;
-    btt6200_modules[0].is_adc_channel = ADC_CHANNEL_11; // PC1
+    btt6200_modules[1].is_adc_channel = ADC_CHANNEL_11; // PC1 - FIXED: was [0]
 
     // ========== MODULE 2 ==========
     btt6200_modules[2].module_id = 2;
@@ -94,7 +94,7 @@ HAL_StatusTypeDef BTT6200_Config_Init(ADC_HandleTypeDef* hadc)
     btt6200_modules[2].dsel0 = (BTT6200_GPIO_t){DSEL0_2_GPIO_Port, DSEL0_2_Pin}; // PG3
     btt6200_modules[2].dsel1 = (BTT6200_GPIO_t){DSEL1_2_GPIO_Port, DSEL1_2_Pin}; // PD14
     btt6200_modules[2].hadc = hadc;
-    btt6200_modules[0].is_adc_channel = ADC_CHANNEL_12; // PC2
+    btt6200_modules[2].is_adc_channel = ADC_CHANNEL_12; // PC2 - FIXED: was [0]
 
     // ========== MODULE 3 ==========
     btt6200_modules[3].module_id = 3;
@@ -106,7 +106,7 @@ HAL_StatusTypeDef BTT6200_Config_Init(ADC_HandleTypeDef* hadc)
     btt6200_modules[3].dsel0 = (BTT6200_GPIO_t){DSEL0_3_GPIO_Port, DSEL0_3_Pin}; // PC8
     btt6200_modules[3].dsel1 = (BTT6200_GPIO_t){DSEL1_3_GPIO_Port, DSEL1_3_Pin}; // PC9
     btt6200_modules[3].hadc = hadc;
-    btt6200_modules[0].is_adc_channel = ADC_CHANNEL_13; // PC3
+    btt6200_modules[3].is_adc_channel = ADC_CHANNEL_13; // PC3 - FIXED: was [0]
 
     // ========== MODULE 4 ==========
     btt6200_modules[4].module_id = 4;
@@ -118,7 +118,7 @@ HAL_StatusTypeDef BTT6200_Config_Init(ADC_HandleTypeDef* hadc)
     btt6200_modules[4].dsel0 = (BTT6200_GPIO_t){DSEL0_4_GPIO_Port, DSEL0_4_Pin}; // PC12
     btt6200_modules[4].dsel1 = (BTT6200_GPIO_t){DSEL1_4_GPIO_Port, DSEL1_4_Pin}; // PD2
     btt6200_modules[4].hadc = hadc;
-    btt6200_modules[0].is_adc_channel = ADC_CHANNEL_14; // PC4
+    btt6200_modules[4].is_adc_channel = ADC_CHANNEL_14; // PC4 - FIXED: was [0]
 
     // Inicializiraj vse module
     for (uint8_t i = 0; i < BTT6200_NUM_MODULES; i++) {

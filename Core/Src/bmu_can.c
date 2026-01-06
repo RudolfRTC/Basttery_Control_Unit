@@ -7,9 +7,16 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "bmu_can.h"
+#include "btt6200_config.h"
 #include <string.h>
 
 /* Private defines -----------------------------------------------------------*/
+#define BMU_HEARTBEAT_MAGIC_BYTE1  0xBEU
+#define BMU_HEARTBEAT_MAGIC_BYTE2  0xEFU
+
+/* Private variables ---------------------------------------------------------*/
+/* MISRA C 2012 Rule 8.9 deviation: Global pointer for interrupt context access */
+static volatile BMU_CAN_HandleTypeDef* g_bmu_can_handle = NULL;
 
 /* Private function prototypes -----------------------------------------------*/
 static HAL_StatusTypeDef BMU_CAN_SendMessage(BMU_CAN_HandleTypeDef* handle,
@@ -35,12 +42,10 @@ HAL_StatusTypeDef BMU_CAN_Init(BMU_CAN_HandleTypeDef* handle,
     handle->hcan1 = hcan1;
     handle->hcan2 = hcan2;
 
-    // Konfiguriraj CAN1 na 500 kbps
-    if (BMU_CAN_Configure500k(hcan1) != HAL_OK) {
-        return HAL_ERROR;
-    }
+    // POMEMBNO: CAN je že inicializiran v MX_CAN1_Init()
+    // Tukaj samo nastavimo filter in zaženemo CAN
 
-    // Konfiguriraj filter
+    // Konfiguriraj filter za CAN1
     if (BMU_CAN_ConfigureFilter(hcan1) != HAL_OK) {
         return HAL_ERROR;
     }
@@ -52,9 +57,6 @@ HAL_StatusTypeDef BMU_CAN_Init(BMU_CAN_HandleTypeDef* handle,
 
     // Če je CAN2 prisoten, ga tudi konfiguriraj
     if (hcan2 != NULL) {
-        if (BMU_CAN_Configure500k(hcan2) != HAL_OK) {
-            return HAL_ERROR;
-        }
         if (BMU_CAN_ConfigureFilter(hcan2) != HAL_OK) {
             return HAL_ERROR;
         }
@@ -64,6 +66,22 @@ HAL_StatusTypeDef BMU_CAN_Init(BMU_CAN_HandleTypeDef* handle,
     }
 
     handle->is_initialized = true;
+
+    // Store global handle for RX callback (atomic operation to prevent race condition)
+    __disable_irq();
+    g_bmu_can_handle = handle;
+    __enable_irq();
+
+    // Enable CAN RX interrupt notifications for FIFO0
+    if (HAL_CAN_ActivateNotification(hcan1, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
+        return HAL_ERROR;
+    }
+
+    if (hcan2 != NULL) {
+        if (HAL_CAN_ActivateNotification(hcan2, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
+            return HAL_ERROR;
+        }
+    }
 
     return HAL_OK;
 }
@@ -81,7 +99,8 @@ HAL_StatusTypeDef BMU_CAN_Configure500k(CAN_HandleTypeDef* hcan)
     }
 
     // Stop CAN if running
-    HAL_CAN_Stop(hcan);
+    /* MISRA C 2012 Rule 17.7: Return value intentionally ignored */
+    (void)HAL_CAN_Stop(hcan);
 
     // Deinitialize
     HAL_CAN_DeInit(hcan);
@@ -109,6 +128,7 @@ HAL_StatusTypeDef BMU_CAN_Configure500k(CAN_HandleTypeDef* hcan)
 
 /**
   * @brief  Nastavi CAN filter (accept all messages)
+  * @note   CAN1 uporablja FilterBank 0, CAN2 uporablja FilterBank 14
   */
 HAL_StatusTypeDef BMU_CAN_ConfigureFilter(CAN_HandleTypeDef* hcan)
 {
@@ -118,7 +138,15 @@ HAL_StatusTypeDef BMU_CAN_ConfigureFilter(CAN_HandleTypeDef* hcan)
 
     CAN_FilterTypeDef filter;
 
-    filter.FilterBank = 0;
+    // Določi FilterBank glede na CAN instance
+    if (hcan->Instance == CAN1) {
+        filter.FilterBank = 0;  // CAN1 uporablja banke 0-13
+    } else if (hcan->Instance == CAN2) {
+        filter.FilterBank = 14;  // CAN2 uporablja banke 14-27
+    } else {
+        return HAL_ERROR;
+    }
+
     filter.FilterMode = CAN_FILTERMODE_IDMASK;
     filter.FilterScale = CAN_FILTERSCALE_32BIT;
     filter.FilterIdHigh = 0x0000;
@@ -127,7 +155,7 @@ HAL_StatusTypeDef BMU_CAN_ConfigureFilter(CAN_HandleTypeDef* hcan)
     filter.FilterMaskIdLow = 0x0000;
     filter.FilterFIFOAssignment = CAN_RX_FIFO0;
     filter.FilterActivation = ENABLE;
-    filter.SlaveStartFilterBank = 14;
+    filter.SlaveStartFilterBank = 14;  // CAN2 start filter bank
 
     if (HAL_CAN_ConfigFilter(hcan, &filter) != HAL_OK) {
         return HAL_ERROR;
@@ -233,12 +261,12 @@ HAL_StatusTypeDef BMU_CAN_SendHeartbeat(BMU_CAN_HandleTypeDef* handle,
     }
 
     uint8_t data[8] = {0};
-    data[0] = (counter >> 24) & 0xFF;
-    data[1] = (counter >> 16) & 0xFF;
-    data[2] = (counter >> 8) & 0xFF;
-    data[3] = counter & 0xFF;
-    data[4] = 0xBE;  // Magic bytes
-    data[5] = 0xEF;
+    data[0] = (counter >> 24) & 0xFFU;
+    data[1] = (counter >> 16) & 0xFFU;
+    data[2] = (counter >> 8) & 0xFFU;
+    data[3] = counter & 0xFFU;
+    data[4] = BMU_HEARTBEAT_MAGIC_BYTE1;
+    data[5] = BMU_HEARTBEAT_MAGIC_BYTE2;
 
     return BMU_CAN_SendMessage(handle, CAN_ID_HEARTBEAT, data, 8);
 }
@@ -266,6 +294,54 @@ HAL_StatusTypeDef BMU_CAN_GetStats(BMU_CAN_HandleTypeDef* handle,
     }
 
     return HAL_OK;
+}
+
+/**
+  * @brief  Pošlji Power Supply Status sporočilo (0x102)
+  */
+HAL_StatusTypeDef BMU_CAN_SendPowerSupply(BMU_CAN_HandleTypeDef* handle,
+                                          BMU_PowerSupply_Msg_t* msg)
+{
+    if (handle == NULL || msg == NULL || !handle->is_initialized) {
+        return HAL_ERROR;
+    }
+
+    return BMU_CAN_SendMessage(handle, CAN_ID_POWER_SUPPLY,
+                               (uint8_t*)msg, sizeof(BMU_PowerSupply_Msg_t));
+}
+
+/**
+  * @brief  Pošlji Input States sporočilo (0x103)
+  */
+HAL_StatusTypeDef BMU_CAN_SendInputStates(BMU_CAN_HandleTypeDef* handle,
+                                          BMU_InputStates_Msg_t* msg)
+{
+    if (handle == NULL || msg == NULL || !handle->is_initialized) {
+        return HAL_ERROR;
+    }
+
+    return BMU_CAN_SendMessage(handle, CAN_ID_INPUT_STATES,
+                               (uint8_t*)msg, sizeof(BMU_InputStates_Msg_t));
+}
+
+/**
+  * @brief  Pošlji BTT6200 Detailed Status sporočilo (0x124-0x128)
+  */
+HAL_StatusTypeDef BMU_CAN_SendBTTDetailed(BMU_CAN_HandleTypeDef* handle,
+                                          uint32_t msg_id,
+                                          BMU_BTT6200_Detailed_Msg_t* msg)
+{
+    if (handle == NULL || msg == NULL || !handle->is_initialized) {
+        return HAL_ERROR;
+    }
+
+    // Validate message ID
+    if (msg_id < CAN_ID_BTT6200_DETAIL_1 || msg_id > CAN_ID_BTT6200_DETAIL_5) {
+        return HAL_ERROR;
+    }
+
+    return BMU_CAN_SendMessage(handle, msg_id,
+                               (uint8_t*)msg, sizeof(BMU_BTT6200_Detailed_Msg_t));
 }
 
 /* Private functions ---------------------------------------------------------*/
@@ -310,4 +386,170 @@ static HAL_StatusTypeDef BMU_CAN_SendMessage(BMU_CAN_HandleTypeDef* handle,
     }
 
     return status;
+}
+
+/**
+  * @brief  Procesira prejeto CAN sporočilo (RX)
+  */
+HAL_StatusTypeDef BMU_CAN_ProcessRxMessage(BMU_CAN_HandleTypeDef* handle,
+                                           CAN_RxHeaderTypeDef* rx_header,
+                                           uint8_t* rx_data)
+{
+    if (handle == NULL || rx_header == NULL || rx_data == NULL) {
+        return HAL_ERROR;
+    }
+
+    // Increment RX counter
+    handle->rx_count++;
+
+    // Process based on message ID
+    switch (rx_header->StdId) {
+
+        // ========== BTT6200 Output Command (0x200) ==========
+        case CAN_ID_BTT6200_OUTPUT_CMD: {
+            if (rx_header->DLC < sizeof(BMU_BTT6200_OutputCmd_t)) {
+                handle->error_count++;
+                return HAL_ERROR;
+            }
+
+            /* MISRA C 2012 Rule 11.5: Use memcpy to avoid unaligned access */
+            BMU_BTT6200_OutputCmd_t cmd;
+            (void)memcpy(&cmd, rx_data, sizeof(cmd));
+
+            // Verify magic number for safety
+            if (cmd.magic != BMU_MAGIC_OUTPUT_CMD) {
+                handle->error_count++;
+                return HAL_ERROR;
+            }
+
+            // Validate output ID
+            if (cmd.output_id >= BTT6200_NUM_OUTPUTS) {
+                handle->error_count++;
+                return HAL_ERROR;
+            }
+
+            // Execute command
+            bool new_state;
+            if (cmd.command == BMU_CMD_OUTPUT_OFF) {
+                new_state = false;
+            } else if (cmd.command == BMU_CMD_OUTPUT_ON) {
+                new_state = true;
+            } else if (cmd.command == BMU_CMD_OUTPUT_TOGGLE) {
+                // Read current state and toggle
+                // STATUS_OK means enabled, STATUS_DISABLED means disabled
+                BTT6200_Status_t current_status = BTT6200_Config_GetStatus(cmd.output_id);
+                new_state = (current_status == BTT6200_STATUS_DISABLED);
+            } else {
+                handle->error_count++;
+                return HAL_ERROR;
+            }
+
+            // Set output state
+            BTT6200_Config_SetOutput((BMU_Output_t)cmd.output_id, new_state);
+            break;
+        }
+
+        // ========== BTT6200 Multi Command (0x201) ==========
+        case CAN_ID_BTT6200_MULTI_CMD: {
+            if (rx_header->DLC < sizeof(BMU_BTT6200_MultiCmd_t)) {
+                handle->error_count++;
+                return HAL_ERROR;
+            }
+
+            /* MISRA C 2012 Rule 11.5: Use memcpy to avoid unaligned access */
+            BMU_BTT6200_MultiCmd_t cmd;
+            (void)memcpy(&cmd, rx_data, sizeof(cmd));
+
+            // Process each output in mask
+            for (uint8_t i = 0; i < BTT6200_NUM_OUTPUTS; i++) {
+                if ((cmd.output_mask & (1UL << i)) != 0U) {
+                    bool state = ((cmd.output_states & (1UL << i)) != 0U);
+                    BTT6200_Config_SetOutput((BMU_Output_t)i, state);
+                }
+            }
+            break;
+        }
+
+        // ========== System Command (0x202) ==========
+        case CAN_ID_SYSTEM_CMD: {
+            if (rx_header->DLC < sizeof(BMU_SystemCmd_t)) {
+                handle->error_count++;
+                return HAL_ERROR;
+            }
+
+            /* MISRA C 2012 Rule 11.5: Use memcpy to avoid unaligned access */
+            BMU_SystemCmd_t cmd;
+            (void)memcpy(&cmd, rx_data, sizeof(cmd));
+
+            // Verify magic number for safety
+            if (cmd.magic != BMU_MAGIC_SYSTEM_CMD) {
+                handle->error_count++;
+                return HAL_ERROR;
+            }
+
+            // Execute system command
+            switch (cmd.command) {
+                case BMU_CMD_SYSTEM_NOP:
+                    // Do nothing
+                    break;
+
+                case BMU_CMD_SYSTEM_RESET_STATS:
+                    // Reset CAN statistics
+                    handle->tx_count = 0;
+                    handle->rx_count = 0;
+                    handle->error_count = 0;
+                    break;
+
+                case BMU_CMD_SYSTEM_DISABLE_ALL:
+                    // Disable all BTT6200 outputs
+                    BTT6200_Config_DisableAll();
+                    break;
+
+                case BMU_CMD_SYSTEM_ENABLE_ALL:
+                    // Enable all BTT6200 outputs
+                    for (uint8_t i = 0; i < BTT6200_NUM_OUTPUTS; i++) {
+                        BTT6200_Config_SetOutput((BMU_Output_t)i, true);
+                    }
+                    break;
+
+                case BMU_CMD_SYSTEM_REBOOT:
+                    // Software reset
+                    NVIC_SystemReset();
+                    break;
+
+                default:
+                    handle->error_count++;
+                    return HAL_ERROR;
+            }
+            break;
+        }
+
+        default:
+            // Unknown message ID
+            handle->error_count++;
+            return HAL_ERROR;
+    }
+
+    return HAL_OK;
+}
+
+/**
+  * @brief  CAN RX callback - klicana iz interrupt-a
+  * @note   Uporabnik mora to funkcijo poklicati iz HAL_CAN_RxFifo0MsgPendingCallback
+  */
+void BMU_CAN_RxCallback(CAN_HandleTypeDef* hcan)
+{
+    CAN_RxHeaderTypeDef rx_header;
+    uint8_t rx_data[8];
+
+    // Check if we have valid handle
+    if (g_bmu_can_handle == NULL || !g_bmu_can_handle->is_initialized) {
+        return;
+    }
+
+    // Read message from FIFO0
+    if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header, rx_data) == HAL_OK) {
+        // Process the received message
+        BMU_CAN_ProcessRxMessage(g_bmu_can_handle, &rx_header, rx_data);
+    }
 }

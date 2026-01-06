@@ -232,21 +232,21 @@ HAL_StatusTypeDef LEM_Config_PrintSensorInfo(UART_HandleTypeDef* uart,
         default:            model_str = "Unknown";   break;
     }
 
-    len = sprintf(buffer, "\r\n=== %s (%s) ===\r\n", cfg->name, model_str);
+    len = snprintf(buffer, sizeof(buffer), "\r\n=== %s (%s) ===\r\n", cfg->name, model_str);
     HAL_UART_Transmit(uart, (uint8_t*)buffer, len, 100);
 
     // Nominal and max current
-    len = sprintf(buffer, "Nominal: %.1fA, Max: %.1fA\r\n",
+    len = snprintf(buffer, sizeof(buffer), "Nominal: %.1fA, Max: %.1fA\r\n",
                   sensor->nominal_current, sensor->max_current);
     HAL_UART_Transmit(uart, (uint8_t*)buffer, len, 100);
 
     // Calibration status
-    len = sprintf(buffer, "Calibrated: %s\r\n",
+    len = snprintf(buffer, sizeof(buffer), "Calibrated: %s\r\n",
                   sensor->calibration.is_calibrated ? "YES" : "NO");
     HAL_UART_Transmit(uart, (uint8_t*)buffer, len, 100);
 
     if (sensor->calibration.is_calibrated) {
-        len = sprintf(buffer, "Zero offset: %u ADC, Sensitivity: %.2f mV/A\r\n",
+        len = snprintf(buffer, sizeof(buffer), "Zero offset: %u ADC, Sensitivity: %.2f mV/A\r\n",
                       sensor->calibration.zero_offset,
                       sensor->calibration.sensitivity_mV_A);
         HAL_UART_Transmit(uart, (uint8_t*)buffer, len, 100);
@@ -255,28 +255,31 @@ HAL_StatusTypeDef LEM_Config_PrintSensorInfo(UART_HandleTypeDef* uart,
     // Last reading
     int current_int = (int)sensor->last_current_A;
     int current_frac = (int)(fabsf(sensor->last_current_A - current_int) * 1000);
-    len = sprintf(buffer, "Last reading: %d.%03d A\r\n",
+    len = snprintf(buffer, sizeof(buffer), "Last reading: %d.%03d A\r\n",
                   current_int, current_frac);
     HAL_UART_Transmit(uart, (uint8_t*)buffer, len, 100);
 
     // OC counter
-    len = sprintf(buffer, "Overcurrent events: %lu\r\n", sensor->oc_count);
+    len = snprintf(buffer, sizeof(buffer), "Overcurrent events: %lu\r\n", sensor->oc_count);
     HAL_UART_Transmit(uart, (uint8_t*)buffer, len, 100);
 
     // Status flags
-    len = sprintf(buffer, "Status: 0x%02X ", sensor->status);
+    len = snprintf(buffer, sizeof(buffer), "Status: 0x%02X ", sensor->status);
     HAL_UART_Transmit(uart, (uint8_t*)buffer, len, 100);
 
     if (sensor->status == LEM_STATUS_OK) {
         char ok[] = "(OK)\r\n";
         HAL_UART_Transmit(uart, (uint8_t*)ok, strlen(ok), 100);
     } else {
-        char flags[80] = "(";
-        if (sensor->status & LEM_STATUS_OVERCURRENT)  strcat(flags, "OC ");
-        if (sensor->status & LEM_STATUS_OUT_OF_RANGE) strcat(flags, "RANGE ");
-        if (sensor->status & LEM_STATUS_NOT_CALIB)    strcat(flags, "UNCAL ");
-        if (sensor->status & LEM_STATUS_ADC_ERROR)    strcat(flags, "ADC_ERR ");
-        strcat(flags, ")\r\n");
+        /* MISRA C 2012: Use snprintf instead of strcat for buffer safety */
+        char flags[80];
+        int offset = 0;
+        offset += snprintf(flags + offset, sizeof(flags) - offset, "(");
+        if (sensor->status & LEM_STATUS_OVERCURRENT)  offset += snprintf(flags + offset, sizeof(flags) - offset, "OC ");
+        if (sensor->status & LEM_STATUS_OUT_OF_RANGE) offset += snprintf(flags + offset, sizeof(flags) - offset, "RANGE ");
+        if (sensor->status & LEM_STATUS_NOT_CALIB)    offset += snprintf(flags + offset, sizeof(flags) - offset, "UNCAL ");
+        if (sensor->status & LEM_STATUS_ADC_ERROR)    offset += snprintf(flags + offset, sizeof(flags) - offset, "ADC_ERR ");
+        (void)snprintf(flags + offset, sizeof(flags) - offset, ")\r\n");
         HAL_UART_Transmit(uart, (uint8_t*)flags, strlen(flags), 100);
     }
 
