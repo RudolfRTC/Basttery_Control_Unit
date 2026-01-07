@@ -370,6 +370,16 @@ int main(void)
 	  }
 
 	  // ========== CAN Bus Data Transmission ==========
+	  #if 1  // Debug: Check CAN state before TX
+	  static uint32_t debug_counter = 0;
+	  if (++debug_counter % 10 == 0) {  // Every 10 seconds
+	      HAL_CAN_StateTypeDef can_state = HAL_CAN_GetState(&hcan1);
+	      (void)snprintf(uart_buf, sizeof(uart_buf), "[DEBUG] CAN Init:%d State:0x%02X\r\n",
+	                    hbmucan.is_initialized, can_state);
+	      HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+	  }
+	  #endif
+
 	  if (hbmucan.is_initialized) {
 	      // 1. Pošlji Temperature message (0x101)
 	      BMU_Temperature_Msg_t temp_msg = {0};
