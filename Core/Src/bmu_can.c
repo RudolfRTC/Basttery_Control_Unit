@@ -347,6 +347,29 @@ HAL_StatusTypeDef BMU_CAN_SendBTTDetailed(BMU_CAN_HandleTypeDef* handle,
 /* Private functions ---------------------------------------------------------*/
 
 /**
+  * @brief  Wait for TX mailbox to become available
+  * @note   Polls CAN peripheral until at least one TX mailbox is free
+  */
+HAL_StatusTypeDef BMU_CAN_WaitTxMailboxFree(BMU_CAN_HandleTypeDef* handle, uint32_t timeout_ms)
+{
+    if (handle == NULL || !handle->is_initialized) {
+        return HAL_ERROR;
+    }
+
+    uint32_t start_tick = HAL_GetTick();
+
+    // Wait until at least one TX mailbox is free
+    while (HAL_CAN_GetTxMailboxesFreeLevel(handle->hcan1) == 0) {
+        // Check timeout
+        if ((HAL_GetTick() - start_tick) > timeout_ms) {
+            return HAL_TIMEOUT;
+        }
+    }
+
+    return HAL_OK;
+}
+
+/**
   * @brief  Pošlji CAN sporočilo
   */
 static HAL_StatusTypeDef BMU_CAN_SendMessage(BMU_CAN_HandleTypeDef* handle,
@@ -361,6 +384,18 @@ static HAL_StatusTypeDef BMU_CAN_SendMessage(BMU_CAN_HandleTypeDef* handle,
     // Ensure DLC is valid (0-8)
     if (dlc > 8) {
         dlc = 8;
+    }
+
+    // Wait for TX mailbox to be free (with timeout)
+    if (BMU_CAN_WaitTxMailboxFree(handle, 10) != HAL_OK) {
+        handle->error_count++;
+        #if 1
+        extern UART_HandleTypeDef huart1;
+        char err_buf[60];
+        (void)snprintf(err_buf, sizeof(err_buf), "[CAN TX] TIMEOUT! No free mailbox\r\n");
+        HAL_UART_Transmit(&huart1, (uint8_t*)err_buf, strlen(err_buf), 100);
+        #endif
+        return HAL_TIMEOUT;
     }
 
     // Configure TX header
@@ -383,7 +418,25 @@ static HAL_StatusTypeDef BMU_CAN_SendMessage(BMU_CAN_HandleTypeDef* handle,
         handle->tx_count++;
     } else {
         handle->error_count++;
+
+        // DEBUG: Print TX failure
+        #if 1
+        extern UART_HandleTypeDef huart1;
+        char err_buf[80];
+        (void)snprintf(err_buf, sizeof(err_buf), "[CAN TX] FAILED! ID:0x%03lX Errors:%lu\r\n",
+                      msg_id, handle->error_count);
+        HAL_UART_Transmit(&huart1, (uint8_t*)err_buf, strlen(err_buf), 100);
+        #endif
     }
+
+    // DEBUG: Print all TX attempts
+    #if 0  // Set to 1 to see ALL CAN TX attempts
+    extern UART_HandleTypeDef huart1;
+    char debug_buf[80];
+    (void)snprintf(debug_buf, sizeof(debug_buf), "[CAN TX] ID:0x%03lX DLC:%d %s\r\n",
+                  msg_id, dlc, (status == HAL_OK) ? "OK" : "FAIL");
+    HAL_UART_Transmit(&huart1, (uint8_t*)debug_buf, strlen(debug_buf), 100);
+    #endif
 
     return status;
 }
@@ -549,8 +602,12 @@ void BMU_CAN_RxCallback(CAN_HandleTypeDef* hcan)
 
     // Read message from FIFO0
     if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header, rx_data) == HAL_OK) {
-        // DEBUG: Uncomment to see received CAN messages on UART
-        #if 1
+        // Process the received message (do this FIRST for speed)
+        HAL_StatusTypeDef result = BMU_CAN_ProcessRxMessage(g_bmu_can_handle, &rx_header, rx_data);
+
+        // DEBUG: Verbose output (DISABLED by default - causes interrupt delays!)
+        // Set to 1 only for debugging, not for production
+        #if 0
         extern UART_HandleTypeDef huart1;
         char debug_buf[150];
         (void)snprintf(debug_buf, sizeof(debug_buf),
@@ -559,13 +616,8 @@ void BMU_CAN_RxCallback(CAN_HandleTypeDef* hcan)
                       rx_data[0], rx_data[1], rx_data[2], rx_data[3],
                       rx_data[4], rx_data[5], rx_data[6], rx_data[7]);
         HAL_UART_Transmit(&huart1, (uint8_t*)debug_buf, strlen(debug_buf), 100);
-        #endif
 
-        // Process the received message
-        HAL_StatusTypeDef result = BMU_CAN_ProcessRxMessage(g_bmu_can_handle, &rx_header, rx_data);
-
-        // DEBUG: Report processing result
-        #if 1
+        // Report processing result
         if (result != HAL_OK) {
             char err_buf[50];
             (void)snprintf(err_buf, sizeof(err_buf), "[CAN RX] Processing FAILED! Errors: %lu\r\n",
@@ -575,6 +627,15 @@ void BMU_CAN_RxCallback(CAN_HandleTypeDef* hcan)
             char ok_buf[30];
             (void)snprintf(ok_buf, sizeof(ok_buf), "[CAN RX] OK\r\n");
             HAL_UART_Transmit(&huart1, (uint8_t*)ok_buf, strlen(ok_buf), 100);
+        }
+        #endif
+
+        // Lightweight debug (only on error) - MUCH faster!
+        #if 1
+        if (result != HAL_OK) {
+            extern UART_HandleTypeDef huart1;
+            const char* msg = "[CAN RX] ERR\r\n";
+            HAL_UART_Transmit(&huart1, (uint8_t*)msg, 14, 10);
         }
         #endif
     }
