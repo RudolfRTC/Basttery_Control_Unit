@@ -403,6 +403,14 @@ HAL_StatusTypeDef BMU_CAN_ProcessRxMessage(BMU_CAN_HandleTypeDef* handle,
   */
 void BMU_CAN_RxCallback(CAN_HandleTypeDef* hcan);
 
+/**
+  * @brief  Wait for TX mailbox to become available
+  * @param  handle: Pointer na BMU_CAN_HandleTypeDef
+  * @param  timeout_ms: Timeout v milisekundah
+  * @retval HAL status (HAL_OK če je mailbox prosta, HAL_TIMEOUT če timeout)
+  */
+HAL_StatusTypeDef BMU_CAN_WaitTxMailboxFree(BMU_CAN_HandleTypeDef* handle, uint32_t timeout_ms);
+
 #ifdef __cplusplus
 }
 #endif

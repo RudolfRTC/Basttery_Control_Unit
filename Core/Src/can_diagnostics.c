@@ -247,5 +247,8 @@ cleanup:
     hcan->Init.Mode = original_mode;
     HAL_CAN_Init(hcan);
 
+    // CRITICAL: Restart CAN after test!
+    HAL_CAN_Start(hcan);
+
     return status;
 }

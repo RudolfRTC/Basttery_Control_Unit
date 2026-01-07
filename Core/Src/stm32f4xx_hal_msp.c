@@ -316,7 +316,10 @@ void HAL_CAN_MspDeInit(CAN_HandleTypeDef* hcan)
 
     /* USER CODE END CAN1_MspDeInit 0 */
     /* Peripheral clock disable */
-    __HAL_RCC_CAN1_CLK_DISABLE();
+    HAL_RCC_CAN1_CLK_ENABLED--;
+    if(HAL_RCC_CAN1_CLK_ENABLED==0){
+      __HAL_RCC_CAN1_CLK_DISABLE();
+    }
 
     /**CAN1 GPIO Configuration
     PG0     ------> CAN1_RX
