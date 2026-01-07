@@ -383,7 +383,25 @@ static HAL_StatusTypeDef BMU_CAN_SendMessage(BMU_CAN_HandleTypeDef* handle,
         handle->tx_count++;
     } else {
         handle->error_count++;
+
+        // DEBUG: Print TX failure
+        #if 1
+        extern UART_HandleTypeDef huart1;
+        char err_buf[80];
+        (void)snprintf(err_buf, sizeof(err_buf), "[CAN TX] FAILED! ID:0x%03lX Errors:%lu\r\n",
+                      msg_id, handle->error_count);
+        HAL_UART_Transmit(&huart1, (uint8_t*)err_buf, strlen(err_buf), 100);
+        #endif
     }
+
+    // DEBUG: Print all TX attempts
+    #if 0  // Set to 1 to see ALL CAN TX attempts
+    extern UART_HandleTypeDef huart1;
+    char debug_buf[80];
+    (void)snprintf(debug_buf, sizeof(debug_buf), "[CAN TX] ID:0x%03lX DLC:%d %s\r\n",
+                  msg_id, dlc, (status == HAL_OK) ? "OK" : "FAIL");
+    HAL_UART_Transmit(&huart1, (uint8_t*)debug_buf, strlen(debug_buf), 100);
+    #endif
 
     return status;
 }
