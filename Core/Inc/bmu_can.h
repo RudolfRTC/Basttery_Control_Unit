@@ -404,6 +404,18 @@ HAL_StatusTypeDef BMU_CAN_ProcessRxMessage(BMU_CAN_HandleTypeDef* handle,
 void BMU_CAN_RxCallback(CAN_HandleTypeDef* hcan);
 
 /**
+  * @brief  Process already-read CAN message (for use in interrupt context)
+  * @note   Call this from interrupt handler after reading the message
+  * @param  hcan: Pointer na CAN_HandleTypeDef
+  * @param  rx_header: Pointer na že prebran CAN_RxHeaderTypeDef
+  * @param  rx_data: Pointer na že prebrane podatke (8 bajtov)
+  * @retval None
+  */
+void BMU_CAN_ProcessRxMessageISR(CAN_HandleTypeDef* hcan,
+                                  CAN_RxHeaderTypeDef* rx_header,
+                                  uint8_t* rx_data);
+
+/**
   * @brief  Wait for TX mailbox to become available
   * @param  handle: Pointer na BMU_CAN_HandleTypeDef
   * @param  timeout_ms: Timeout v milisekundah

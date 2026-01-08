@@ -659,8 +659,8 @@ void BMU_CAN_RxCallback(CAN_HandleTypeDef* hcan)
     CAN_RxHeaderTypeDef rx_header;
     uint8_t rx_data[8];
 
-    // Check if we have valid handle
-    if (g_bmu_can_handle == NULL || !g_bmu_can_handle->is_initialized) {
+    /* MISRA C 2012 Rule 14.4: Explicit boolean check */
+    if ((g_bmu_can_handle == NULL) || (g_bmu_can_handle->is_initialized == false)) {
         return;
     }
 
@@ -677,11 +677,11 @@ void BMU_CAN_RxCallback(CAN_HandleTypeDef* hcan)
             // Success - just count it, print summary periodically
             static uint32_t rx_count_debug = 0;
             rx_count_debug++;
-            if (rx_count_debug % 10 == 1) {  // Print first and every 10th
+            if ((rx_count_debug % 10U) == 1U) {  // Print first and every 10th
                 char buf[40];
                 (void)snprintf(buf, sizeof(buf), "[RX OK] 0x%03lX (count:%lu)\r\n",
                               rx_header.StdId, rx_count_debug);
-                HAL_UART_Transmit(&huart1, (uint8_t*)buf, strlen(buf), 10);
+                (void)HAL_UART_Transmit(&huart1, (uint8_t*)buf, (uint16_t)strlen(buf), 10);
             }
         } else {
             // Failure - always print with data for debugging
@@ -691,8 +691,39 @@ void BMU_CAN_RxCallback(CAN_HandleTypeDef* hcan)
                           rx_header.StdId,
                           rx_data[0], rx_data[1], rx_data[2], rx_data[3],
                           rx_data[4], rx_data[5], rx_data[6], rx_data[7]);
-            HAL_UART_Transmit(&huart1, (uint8_t*)buf, strlen(buf), 10);
+            (void)HAL_UART_Transmit(&huart1, (uint8_t*)buf, (uint16_t)strlen(buf), 10);
         }
         #endif
     }
+}
+
+/**
+  * @brief  Process already-read CAN message (for use in interrupt context)
+  * @note   Call this from interrupt handler after reading the message
+  * @param  hcan: Pointer na CAN_HandleTypeDef
+  * @param  rx_header: Pointer na že prebran CAN_RxHeaderTypeDef
+  * @param  rx_data: Pointer na že prebrane podatke (8 bajtov)
+  * @retval None
+  */
+void BMU_CAN_ProcessRxMessageISR(CAN_HandleTypeDef* hcan,
+                                  CAN_RxHeaderTypeDef* rx_header,
+                                  uint8_t* rx_data)
+{
+    HAL_StatusTypeDef result;
+
+    /* MISRA C 2012 Rule 14.4: Explicit NULL and boolean checks */
+    if ((hcan == NULL) || (rx_header == NULL) || (rx_data == NULL)) {
+        return;
+    }
+
+    if ((g_bmu_can_handle == NULL) || (g_bmu_can_handle->is_initialized == false)) {
+        return;
+    }
+
+    /* Cast from volatile to non-volatile (safe - pointer set once during init) */
+    result = BMU_CAN_ProcessRxMessage((BMU_CAN_HandleTypeDef*)g_bmu_can_handle,
+                                      rx_header, rx_data);
+
+    /* Optional: Handle result or update statistics */
+    (void)result; /* Explicitly ignore return value in ISR context */
 }
