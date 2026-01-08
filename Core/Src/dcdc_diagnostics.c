@@ -38,35 +38,57 @@ bool DCDC_Diag_Init(void)
 void DCDC_Diag_ProcessCommand(uint32_t can_id, const uint8_t *data, uint8_t dlc)
 {
     DCDC_Diag_Command_t cmd;
+    DCDC_Diag_Config_t cfg;
+    DCDC_Config_t new_config;
     uint8_t target_converter;
     bool process_both;
+    bool is_config_msg;
 
     /* Validate parameters */
     if ((data == NULL) || (dlc < 1U) || (g_diag_is_initialized == false)) {
         return;
     }
 
-    /* Parse command */
-    (void)memcpy(&cmd, data, sizeof(DCDC_Diag_Command_t));
-
-    /* Determine which converter(s) to control */
+    /* Determine message type and which converter(s) to control */
     process_both = false;
     target_converter = 0U;
+    is_config_msg = false;
 
     switch (can_id) {
         case DCDC_DIAG_CMD_CONV1:
             target_converter = 0U;
             process_both = false;
+            is_config_msg = false;
             break;
 
         case DCDC_DIAG_CMD_CONV2:
             target_converter = 1U;
             process_both = false;
+            is_config_msg = false;
             break;
 
         case DCDC_DIAG_CMD_BOTH:
-            target_converter = 0U;  /* Start with first converter */
+            target_converter = 0U;
             process_both = true;
+            is_config_msg = false;
+            break;
+
+        case DCDC_DIAG_CFG_CONV1:
+            target_converter = 0U;
+            process_both = false;
+            is_config_msg = true;
+            break;
+
+        case DCDC_DIAG_CFG_CONV2:
+            target_converter = 1U;
+            process_both = false;
+            is_config_msg = true;
+            break;
+
+        case DCDC_DIAG_CFG_BOTH:
+            target_converter = 0U;
+            process_both = true;
+            is_config_msg = true;
             break;
 
         default:
@@ -74,22 +96,44 @@ void DCDC_Diag_ProcessCommand(uint32_t can_id, const uint8_t *data, uint8_t dlc)
             return;
     }
 
-    /* Execute command */
-    if (cmd.command == DCDC_DIAG_CMD_ON) {
-        /* Vklop */
-        (void)DCDC_Start(target_converter);
+    /* Process configuration message */
+    if (is_config_msg == true) {
+        /* Parse config message */
+        (void)memcpy(&cfg, data, sizeof(DCDC_Diag_Config_t));
+
+        /* Build new configuration */
+        new_config.voltage_setpoint = cfg.voltage_setpoint;
+        new_config.current_limit = cfg.current_limit;
+        new_config.control_type = cfg.control_type;
+        new_config.converter_mode = cfg.converter_mode;
+        new_config.start_command = 0U;  /* Keep current state */
+
+        /* Apply configuration */
+        (void)DCDC_Configure(target_converter, &new_config);
         if (process_both == true) {
-            (void)DCDC_Start(1U);
-        }
-    } else if (cmd.command == DCDC_DIAG_CMD_OFF) {
-        /* Izklop */
-        (void)DCDC_Stop(target_converter);
-        if (process_both == true) {
-            (void)DCDC_Stop(1U);
+            new_config.can_address = 0x01U;  /* Conv2 address */
+            (void)DCDC_Configure(1U, &new_config);
         }
     } else {
-        /* Unknown command value */
-        return;
+        /* Process ON/OFF command */
+        (void)memcpy(&cmd, data, sizeof(DCDC_Diag_Command_t));
+
+        if (cmd.command == DCDC_DIAG_CMD_ON) {
+            /* Vklop */
+            (void)DCDC_Start(target_converter);
+            if (process_both == true) {
+                (void)DCDC_Start(1U);
+            }
+        } else if (cmd.command == DCDC_DIAG_CMD_OFF) {
+            /* Izklop */
+            (void)DCDC_Stop(target_converter);
+            if (process_both == true) {
+                (void)DCDC_Stop(1U);
+            }
+        } else {
+            /* Unknown command value */
+            return;
+        }
     }
 
     /* Send immediate diagnostic update after command */

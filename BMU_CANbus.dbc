@@ -174,6 +174,27 @@ BO_ 770 DCDC_Cmd_Both: 8 BMS,VCU
  SG_ Command : 0|8@1+ (1,0) [0|1] "" BMU
  SG_ Reserved : 8|56@1+ (1,0) [0|72057594037927935] "" BMU
 
+BO_ 771 DCDC_Config_Conv1: 8 BMS,VCU
+ SG_ VoltageSetpoint : 0|16@1+ (0.1,0) [0|6553.5] "V" BMU
+ SG_ CurrentLimit : 16|16@1+ (0.1,0) [0|6553.5] "A" BMU
+ SG_ ControlType : 32|8@1+ (1,0) [0|255] "" BMU
+ SG_ ConverterMode : 40|8@1+ (1,0) [0|255] "" BMU
+ SG_ Reserved : 48|16@1+ (1,0) [0|65535] "" BMU
+
+BO_ 772 DCDC_Config_Conv2: 8 BMS,VCU
+ SG_ VoltageSetpoint : 0|16@1+ (0.1,0) [0|6553.5] "V" BMU
+ SG_ CurrentLimit : 16|16@1+ (0.1,0) [0|6553.5] "A" BMU
+ SG_ ControlType : 32|8@1+ (1,0) [0|255] "" BMU
+ SG_ ConverterMode : 40|8@1+ (1,0) [0|255] "" BMU
+ SG_ Reserved : 48|16@1+ (1,0) [0|65535] "" BMU
+
+BO_ 773 DCDC_Config_Both: 8 BMS,VCU
+ SG_ VoltageSetpoint : 0|16@1+ (0.1,0) [0|6553.5] "V" BMU
+ SG_ CurrentLimit : 16|16@1+ (0.1,0) [0|6553.5] "A" BMU
+ SG_ ControlType : 32|8@1+ (1,0) [0|255] "" BMU
+ SG_ ConverterMode : 40|8@1+ (1,0) [0|255] "" BMU
+ SG_ Reserved : 48|16@1+ (1,0) [0|65535] "" BMU
+
 BO_ 1024 DCDC1_Status: 8 BMU
  SG_ OperatingMode : 0|8@1+ (1,0) [0|255] "" BMS,VCU
  SG_ ControlType : 8|8@1+ (1,0) [0|255] "" BMS,VCU
@@ -235,9 +256,12 @@ CM_ BO_ 511 "Heartbeat Message - 1Hz";
 CM_ BO_ 512 "BTT6200 Output Control Command (RX) - On Demand";
 CM_ BO_ 513 "BTT6200 Multiple Output Control (RX) - On Demand";
 CM_ BO_ 514 "System Command (RX) - On Demand";
-CM_ BO_ 768 "DC/DC Converter 1 Command (RX) - On Demand";
-CM_ BO_ 769 "DC/DC Converter 2 Command (RX) - On Demand";
-CM_ BO_ 770 "DC/DC Both Converters Command (RX) - On Demand";
+CM_ BO_ 768 "DC/DC Converter 1 ON/OFF Command (RX) - On Demand";
+CM_ BO_ 769 "DC/DC Converter 2 ON/OFF Command (RX) - On Demand";
+CM_ BO_ 770 "DC/DC Both Converters ON/OFF Command (RX) - On Demand";
+CM_ BO_ 771 "DC/DC Converter 1 Configuration (RX) - On Demand";
+CM_ BO_ 772 "DC/DC Converter 2 Configuration (RX) - On Demand";
+CM_ BO_ 773 "DC/DC Both Converters Configuration (RX) - On Demand";
 CM_ BO_ 1024 "DC/DC Converter 1 Status - 10Hz";
 CM_ BO_ 1025 "DC/DC Converter 1 Voltage/Current Measurements - 10Hz";
 CM_ BO_ 1026 "DC/DC Converter 1 Power Measurements - 10Hz";
@@ -285,6 +309,9 @@ BA_ "GenMsgCycleTime" BO_ 291 0;
 BA_ "GenMsgCycleTime" BO_ 768 0;
 BA_ "GenMsgCycleTime" BO_ 769 0;
 BA_ "GenMsgCycleTime" BO_ 770 0;
+BA_ "GenMsgCycleTime" BO_ 771 0;
+BA_ "GenMsgCycleTime" BO_ 772 0;
+BA_ "GenMsgCycleTime" BO_ 773 0;
 BA_ "GenMsgCycleTime" BO_ 1024 100;
 BA_ "GenMsgCycleTime" BO_ 1025 100;
 BA_ "GenMsgCycleTime" BO_ 1026 100;
@@ -301,6 +328,12 @@ VAL_ 514 SystemCommand 0 "NOP" 1 "RESET_STATS" 2 "DISABLE_ALL" 3 "ENABLE_ALL" 25
 VAL_ 768 Command 0 "OFF" 1 "ON" ;
 VAL_ 769 Command 0 "OFF" 1 "ON" ;
 VAL_ 770 Command 0 "OFF" 1 "ON" ;
+VAL_ 771 ControlType 7 "vBus2Lim" 8 "vBus1Lim" ;
+VAL_ 771 ConverterMode 0 "Standby" 1 "Bus1toBus2" 2 "Bus2toBus1" ;
+VAL_ 772 ControlType 7 "vBus2Lim" 8 "vBus1Lim" ;
+VAL_ 772 ConverterMode 0 "Standby" 1 "Bus1toBus2" 2 "Bus2toBus1" ;
+VAL_ 773 ControlType 7 "vBus2Lim" 8 "vBus1Lim" ;
+VAL_ 773 ConverterMode 0 "Standby" 1 "Bus1toBus2" 2 "Bus2toBus1" ;
 VAL_ 1024 OperatingMode 0 "Standby" 1 "Bus1toBus2" 2 "Bus2toBus1" ;
 VAL_ 1024 ControlType 7 "vBus2Lim" 8 "vBus1Lim" ;
 VAL_ 1024 IsRunning 0 "Stopped" 1 "Running" ;
