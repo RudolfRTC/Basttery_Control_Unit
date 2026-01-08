@@ -34,12 +34,13 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include <math.h>
 
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-uint32_t i_mA;
 
 /* USER CODE END PTD */
 
@@ -191,11 +192,15 @@ int main(void)
                       stats.sample_count, stats.alert_count);
               HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 
-              if (stats.sample_count > 0) {
+              if (stats.sample_count > 0U) {
+                  int32_t min_frac = stats.min_temp % 100;
+                  int32_t max_frac = stats.max_temp % 100;
+                  min_frac = (min_frac < 0) ? -min_frac : min_frac;
+                  max_frac = (max_frac < 0) ? -max_frac : max_frac;
                   (void)snprintf(uart_buf, sizeof(uart_buf), "Min: %d.%02dC, Max: %d.%02dC\r\n",
-                          stats.min_temp/100, abs(stats.min_temp%100),
-                          stats.max_temp/100, abs(stats.max_temp%100));
-                  HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+                          (int)(stats.min_temp/100), (int)min_frac,
+                          (int)(stats.max_temp/100), (int)max_frac);
+                  (void)HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, (uint16_t)strlen(uart_buf), 100);
               }
           }
       }
@@ -317,19 +322,19 @@ int main(void)
 	  bool is_alert = false;   // Deklarirano zunaj if bloka za CAN
 	  if (TMP1075_ReadTemperature(&htmp1075, &tC) == HAL_OK) {
 	      // Uspešno branje temperature
-	      int temp_int = (int)tC;
-	      int temp_frac = (int)((tC - temp_int) * 100);
-	      if (temp_frac < 0) temp_frac = -temp_frac;  // Absolutna vrednost za decimale
+	      int32_t temp_int = (int32_t)tC;
+	      int32_t temp_frac = (int32_t)((tC - (float)temp_int) * 100.0f);
+	      if (temp_frac < 0) {
+	          temp_frac = -temp_frac;  // Absolutna vrednost za decimale
+	      }
 
 	      // Konvertiraj v int16_t (°C × 100) za shranjevanje v FRAM
 	      temp_x100 = (int16_t)(tC * 100.0f);
 	      is_alert = (tC < 0.0f);
 
 	      // Shrani v FRAM (če je inicializiran)
-	      if (htemplogger.is_initialized) {
-	          if (TempLogger_LogTemperature(&htemplogger, temp_x100, is_alert) == HAL_OK) {
-	              // Uspešno shranjeno v FRAM
-	          }
+	      if (htemplogger.is_initialized != false) {
+	          (void)TempLogger_LogTemperature(&htemplogger, temp_x100, is_alert);
 	      }
 
 	      // ALERT: Temperatura pod 0°C
