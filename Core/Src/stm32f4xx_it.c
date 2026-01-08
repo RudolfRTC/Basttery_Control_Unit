@@ -303,18 +303,33 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
     CAN_RxHeaderTypeDef rx_header;
     uint8_t rx_data[8];
+    uint32_t can_id;
 
     if (hcan == NULL) {
         return;
     }
 
-    /* Read ALL messages from FIFO and enqueue for main loop processing */
+    /* Read ALL messages from FIFO to prevent overflow */
     while (HAL_CAN_GetRxFifoFillLevel(hcan, CAN_RX_FIFO0) > 0U) {
         if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header, rx_data) != HAL_OK) {
             break;
         }
 
-        /* Enqueue message to buffer (fast ISR) */
+        /* Extract CAN ID */
+        if (rx_header.IDE == CAN_ID_STD) {
+            can_id = rx_header.StdId;
+        } else {
+            can_id = rx_header.ExtId;
+        }
+
+        /* Route message */
+        if (hcan == &hcan1) {
+            DCDC_Diag_ProcessCommand(can_id, rx_data, rx_header.DLC);
+        } else if (hcan == &hcan2) {
+            DCDC_ProcessCANMessage(can_id, rx_data, rx_header.DLC);
+        }
+
+        /* Process BMU protocol */
         BMU_CAN_ProcessRxMessageISR(hcan, &rx_header, rx_data);
     }
 }

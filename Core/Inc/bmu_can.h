@@ -430,12 +430,6 @@ HAL_StatusTypeDef BMU_CAN_WaitTxMailboxFree(BMU_CAN_HandleTypeDef* handle, uint3
   */
 HAL_StatusTypeDef BMU_CAN_CheckAndRecover(BMU_CAN_HandleTypeDef* handle);
 
-/**
-  * @brief  Process CAN RX queue (call from main loop)
-  * @retval None
-  */
-void BMU_CAN_ProcessQueue(void);
-
 #ifdef __cplusplus
 }
 #endif
