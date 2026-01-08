@@ -293,8 +293,6 @@ void CAN2_TX_IRQHandler(void)
   /* USER CODE END CAN2_TX_IRQn 1 */
 }
 
-/* USER CODE BEGIN 1 */
-
 /**
   * @brief  CAN RX FIFO 0 message pending callback
   * @param  hcan: Pointer to CAN_HandleTypeDef structure
