@@ -245,10 +245,33 @@ cleanup:
     // Restore original mode
     HAL_CAN_Stop(hcan);
     hcan->Init.Mode = original_mode;
-    HAL_CAN_Init(hcan);
+
+    if (HAL_CAN_Init(hcan) != HAL_OK) {
+        DIAG_Print(huart, "  ✗ Failed to re-init CAN!\r\n");
+        return HAL_ERROR;
+    }
+
+    // CRITICAL: Re-configure filter (HAL_CAN_Init may have reset it!)
+    // Forward declare the filter config function
+    extern HAL_StatusTypeDef BMU_CAN_ConfigureFilter(CAN_HandleTypeDef* hcan);
+    if (BMU_CAN_ConfigureFilter(hcan) != HAL_OK) {
+        DIAG_Print(huart, "  ✗ Failed to re-configure filter!\r\n");
+        return HAL_ERROR;
+    }
 
     // CRITICAL: Restart CAN after test!
-    HAL_CAN_Start(hcan);
+    if (HAL_CAN_Start(hcan) != HAL_OK) {
+        DIAG_Print(huart, "  ✗ Failed to restart CAN after loopback!\r\n");
+        return HAL_ERROR;
+    }
+
+    // CRITICAL: Re-enable RX notifications (HAL_CAN_Stop disabled them!)
+    if (HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
+        DIAG_Print(huart, "  ✗ Failed to re-activate RX notifications!\r\n");
+        return HAL_ERROR;
+    }
+
+    DIAG_Print(huart, "  → CAN restored to normal mode and restarted\r\n");
 
     return status;
 }
