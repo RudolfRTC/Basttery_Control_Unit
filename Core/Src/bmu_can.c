@@ -374,11 +374,24 @@ HAL_StatusTypeDef BMU_CAN_WaitTxMailboxFree(BMU_CAN_HandleTypeDef* handle, uint3
             HAL_Delay(10);  // Wait for auto bus-off recovery
 
             // Reconfigure filter
-            BMU_CAN_ConfigureFilter(handle->hcan1);
+            if (BMU_CAN_ConfigureFilter(handle->hcan1) != HAL_OK) {
+                const char* err = "[CAN] Filter config FAILED in TX wait!\r\n";
+                HAL_UART_Transmit(&huart1, (uint8_t*)err, strlen(err), 10);
+                return HAL_ERROR;
+            }
 
             // Restart
-            HAL_CAN_Start(handle->hcan1);
-            HAL_CAN_ActivateNotification(handle->hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
+            if (HAL_CAN_Start(handle->hcan1) != HAL_OK) {
+                const char* err = "[CAN] Restart FAILED in TX wait!\r\n";
+                HAL_UART_Transmit(&huart1, (uint8_t*)err, strlen(err), 10);
+                return HAL_ERROR;
+            }
+
+            if (HAL_CAN_ActivateNotification(handle->hcan1, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
+                const char* err = "[CAN] Notification enable FAILED in TX wait!\r\n";
+                HAL_UART_Transmit(&huart1, (uint8_t*)err, strlen(err), 10);
+                return HAL_ERROR;
+            }
 
             return HAL_OK;  // Mailbox should be free after restart
         }
@@ -463,11 +476,24 @@ HAL_StatusTypeDef BMU_CAN_CheckAndRecover(BMU_CAN_HandleTypeDef* handle)
         HAL_Delay(10);
 
         // Reconfigure filter
-        BMU_CAN_ConfigureFilter(handle->hcan1);
+        if (BMU_CAN_ConfigureFilter(handle->hcan1) != HAL_OK) {
+            const char* err = "[CAN] Filter config FAILED in state recovery!\r\n";
+            HAL_UART_Transmit(&huart1, (uint8_t*)err, strlen(err), 10);
+            return HAL_ERROR;
+        }
 
         // Restart
-        HAL_CAN_Start(handle->hcan1);
-        HAL_CAN_ActivateNotification(handle->hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
+        if (HAL_CAN_Start(handle->hcan1) != HAL_OK) {
+            const char* err = "[CAN] Restart FAILED in state recovery!\r\n";
+            HAL_UART_Transmit(&huart1, (uint8_t*)err, strlen(err), 10);
+            return HAL_ERROR;
+        }
+
+        if (HAL_CAN_ActivateNotification(handle->hcan1, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
+            const char* err = "[CAN] Notification enable FAILED in state recovery!\r\n";
+            HAL_UART_Transmit(&huart1, (uint8_t*)err, strlen(err), 10);
+            return HAL_ERROR;
+        }
 
         const char* ok = "[CAN] State recovery complete!\r\n";
         HAL_UART_Transmit(&huart1, (uint8_t*)ok, strlen(ok), 10);
@@ -481,8 +507,17 @@ HAL_StatusTypeDef BMU_CAN_CheckAndRecover(BMU_CAN_HandleTypeDef* handle)
         HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), 10);
 
         // Try to start
-        HAL_CAN_Start(handle->hcan1);
-        HAL_CAN_ActivateNotification(handle->hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
+        if (HAL_CAN_Start(handle->hcan1) != HAL_OK) {
+            const char* err = "[CAN] Start FAILED in INRQ recovery!\r\n";
+            HAL_UART_Transmit(&huart1, (uint8_t*)err, strlen(err), 10);
+            return HAL_ERROR;
+        }
+
+        if (HAL_CAN_ActivateNotification(handle->hcan1, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
+            const char* err = "[CAN] Notification enable FAILED in INRQ recovery!\r\n";
+            HAL_UART_Transmit(&huart1, (uint8_t*)err, strlen(err), 10);
+            return HAL_ERROR;
+        }
     }
 
     return HAL_OK;
@@ -538,25 +573,15 @@ static HAL_StatusTypeDef BMU_CAN_SendMessage(BMU_CAN_HandleTypeDef* handle,
     } else {
         handle->error_count++;
 
-        // DEBUG: Print TX failure
+        // DEBUG: Print TX failure (only failures to reduce UART load)
         #if 1
         extern UART_HandleTypeDef huart1;
-        char err_buf[80];
-        (void)snprintf(err_buf, sizeof(err_buf), "[CAN TX] FAILED! ID:0x%03lX Errors:%lu\r\n",
+        char debug_buf[80];
+        (void)snprintf(debug_buf, sizeof(debug_buf), "[TX ERR] 0x%03lX (Errors:%lu)\r\n",
                       msg_id, handle->error_count);
-        HAL_UART_Transmit(&huart1, (uint8_t*)err_buf, strlen(err_buf), 100);
+        HAL_UART_Transmit(&huart1, (uint8_t*)debug_buf, strlen(debug_buf), 10);
         #endif
     }
-
-    // DEBUG: Print TX attempts (only failures to reduce UART load)
-    #if 1
-    if (status != HAL_OK) {
-        extern UART_HandleTypeDef huart1;
-        char debug_buf[60];
-        (void)snprintf(debug_buf, sizeof(debug_buf), "[TX ERR] 0x%03lX\r\n", msg_id);
-        HAL_UART_Transmit(&huart1, (uint8_t*)debug_buf, strlen(debug_buf), 10);
-    }
-    #endif
 
     return status;
 }
@@ -723,7 +748,8 @@ void BMU_CAN_RxCallback(CAN_HandleTypeDef* hcan)
     // Read message from FIFO0
     if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header, rx_data) == HAL_OK) {
         // Process the received message (do this FIRST for speed)
-        HAL_StatusTypeDef result = BMU_CAN_ProcessRxMessage(g_bmu_can_handle, &rx_header, rx_data);
+        // Cast from volatile to non-volatile (safe because pointer is set once during init)
+        HAL_StatusTypeDef result = BMU_CAN_ProcessRxMessage((BMU_CAN_HandleTypeDef*)g_bmu_can_handle, &rx_header, rx_data);
 
         // DEBUG: Lightweight RX output (only show received messages, not all data)
         #if 1
