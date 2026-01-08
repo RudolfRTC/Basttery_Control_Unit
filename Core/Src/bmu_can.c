@@ -35,11 +35,12 @@ HAL_StatusTypeDef BMU_CAN_Init(BMU_CAN_HandleTypeDef* handle,
                                CAN_HandleTypeDef* hcan1,
                                CAN_HandleTypeDef* hcan2)
 {
-    if (handle == NULL || hcan1 == NULL) {
+    /* MISRA C 2012 Rule 14.4: Use explicit NULL comparison */
+    if ((handle == NULL) || (hcan1 == NULL)) {
         return HAL_ERROR;
     }
 
-    memset(handle, 0, sizeof(BMU_CAN_HandleTypeDef));
+    (void)memset(handle, 0, sizeof(BMU_CAN_HandleTypeDef));
 
     handle->hcan1 = hcan1;
     handle->hcan2 = hcan2;
@@ -172,12 +173,13 @@ HAL_StatusTypeDef BMU_CAN_ConfigureFilter(CAN_HandleTypeDef* hcan)
 HAL_StatusTypeDef BMU_CAN_SendStatus(BMU_CAN_HandleTypeDef* handle,
                                      BMU_Status_Msg_t* msg)
 {
-    if (handle == NULL || msg == NULL || !handle->is_initialized) {
+    /* MISRA C 2012 Rule 14.4: Explicit boolean check */
+    if ((handle == NULL) || (msg == NULL) || (handle->is_initialized == false)) {
         return HAL_ERROR;
     }
 
     return BMU_CAN_SendMessage(handle, CAN_ID_BMU_STATUS,
-                               (uint8_t*)msg, sizeof(BMU_Status_Msg_t));
+                               (uint8_t*)msg, (uint8_t)sizeof(BMU_Status_Msg_t));
 }
 
 /**
@@ -186,12 +188,13 @@ HAL_StatusTypeDef BMU_CAN_SendStatus(BMU_CAN_HandleTypeDef* handle,
 HAL_StatusTypeDef BMU_CAN_SendTemperature(BMU_CAN_HandleTypeDef* handle,
                                           BMU_Temperature_Msg_t* msg)
 {
-    if (handle == NULL || msg == NULL || !handle->is_initialized) {
+    /* MISRA C 2012 Rule 14.4: Explicit boolean check */
+    if ((handle == NULL) || (msg == NULL) || (handle->is_initialized == false)) {
         return HAL_ERROR;
     }
 
     return BMU_CAN_SendMessage(handle, CAN_ID_TEMPERATURE,
-                               (uint8_t*)msg, sizeof(BMU_Temperature_Msg_t));
+                               (uint8_t*)msg, (uint8_t)sizeof(BMU_Temperature_Msg_t));
 }
 
 /**
@@ -201,12 +204,13 @@ HAL_StatusTypeDef BMU_CAN_SendLEMCurrent(BMU_CAN_HandleTypeDef* handle,
                                          uint32_t msg_id,
                                          BMU_LEM_Current_Msg_t* msg)
 {
-    if (handle == NULL || msg == NULL || !handle->is_initialized) {
+    /* MISRA C 2012 Rule 14.4: Explicit boolean check */
+    if ((handle == NULL) || (msg == NULL) || (handle->is_initialized == false)) {
         return HAL_ERROR;
     }
 
     return BMU_CAN_SendMessage(handle, msg_id,
-                               (uint8_t*)msg, sizeof(BMU_LEM_Current_Msg_t));
+                               (uint8_t*)msg, (uint8_t)sizeof(BMU_LEM_Current_Msg_t));
 }
 
 /**
@@ -216,12 +220,13 @@ HAL_StatusTypeDef BMU_CAN_SendBTTStatus(BMU_CAN_HandleTypeDef* handle,
                                         uint32_t msg_id,
                                         BMU_BTT6200_Status_Msg_t* msg)
 {
-    if (handle == NULL || msg == NULL || !handle->is_initialized) {
+    /* MISRA C 2012 Rule 14.4: Explicit boolean check */
+    if ((handle == NULL) || (msg == NULL) || (handle->is_initialized == false)) {
         return HAL_ERROR;
     }
 
     return BMU_CAN_SendMessage(handle, msg_id,
-                               (uint8_t*)msg, sizeof(BMU_BTT6200_Status_Msg_t));
+                               (uint8_t*)msg, (uint8_t)sizeof(BMU_BTT6200_Status_Msg_t));
 }
 
 /**
@@ -230,12 +235,13 @@ HAL_StatusTypeDef BMU_CAN_SendBTTStatus(BMU_CAN_HandleTypeDef* handle,
 HAL_StatusTypeDef BMU_CAN_SendFRAMStats(BMU_CAN_HandleTypeDef* handle,
                                        BMU_FRAM_Stats_Msg_t* msg)
 {
-    if (handle == NULL || msg == NULL || !handle->is_initialized) {
+    /* MISRA C 2012 Rule 14.4: Explicit boolean check */
+    if ((handle == NULL) || (msg == NULL) || (handle->is_initialized == false)) {
         return HAL_ERROR;
     }
 
     return BMU_CAN_SendMessage(handle, CAN_ID_FRAM_STATS,
-                               (uint8_t*)msg, sizeof(BMU_FRAM_Stats_Msg_t));
+                               (uint8_t*)msg, (uint8_t)sizeof(BMU_FRAM_Stats_Msg_t));
 }
 
 /**
@@ -244,12 +250,13 @@ HAL_StatusTypeDef BMU_CAN_SendFRAMStats(BMU_CAN_HandleTypeDef* handle,
 HAL_StatusTypeDef BMU_CAN_SendAlarms(BMU_CAN_HandleTypeDef* handle,
                                      BMU_Alarms_Msg_t* msg)
 {
-    if (handle == NULL || msg == NULL || !handle->is_initialized) {
+    /* MISRA C 2012 Rule 14.4: Explicit boolean check */
+    if ((handle == NULL) || (msg == NULL) || (handle->is_initialized == false)) {
         return HAL_ERROR;
     }
 
     return BMU_CAN_SendMessage(handle, CAN_ID_ALARMS,
-                               (uint8_t*)msg, sizeof(BMU_Alarms_Msg_t));
+                               (uint8_t*)msg, (uint8_t)sizeof(BMU_Alarms_Msg_t));
 }
 
 /**
@@ -258,19 +265,22 @@ HAL_StatusTypeDef BMU_CAN_SendAlarms(BMU_CAN_HandleTypeDef* handle,
 HAL_StatusTypeDef BMU_CAN_SendHeartbeat(BMU_CAN_HandleTypeDef* handle,
                                         uint32_t counter)
 {
-    if (handle == NULL || !handle->is_initialized) {
+    /* MISRA C 2012 Rule 14.4: Explicit boolean check */
+    if ((handle == NULL) || (handle->is_initialized == false)) {
         return HAL_ERROR;
     }
 
-    uint8_t data[8] = {0};
-    data[0] = (counter >> 24) & 0xFFU;
-    data[1] = (counter >> 16) & 0xFFU;
-    data[2] = (counter >> 8) & 0xFFU;
-    data[3] = counter & 0xFFU;
+    uint8_t data[8] = {0U};
+    data[0] = (uint8_t)((counter >> 24) & 0xFFU);
+    data[1] = (uint8_t)((counter >> 16) & 0xFFU);
+    data[2] = (uint8_t)((counter >> 8) & 0xFFU);
+    data[3] = (uint8_t)(counter & 0xFFU);
     data[4] = BMU_HEARTBEAT_MAGIC_BYTE1;
     data[5] = BMU_HEARTBEAT_MAGIC_BYTE2;
+    data[6] = 0U;
+    data[7] = 0U;
 
-    return BMU_CAN_SendMessage(handle, CAN_ID_HEARTBEAT, data, 8);
+    return BMU_CAN_SendMessage(handle, CAN_ID_HEARTBEAT, data, 8U);
 }
 
 /**
@@ -281,7 +291,8 @@ HAL_StatusTypeDef BMU_CAN_GetStats(BMU_CAN_HandleTypeDef* handle,
                                   uint32_t* rx_count,
                                   uint32_t* error_count)
 {
-    if (handle == NULL || !handle->is_initialized) {
+    /* MISRA C 2012 Rule 14.4: Explicit boolean check */
+    if ((handle == NULL) || (handle->is_initialized == false)) {
         return HAL_ERROR;
     }
 
@@ -304,12 +315,13 @@ HAL_StatusTypeDef BMU_CAN_GetStats(BMU_CAN_HandleTypeDef* handle,
 HAL_StatusTypeDef BMU_CAN_SendPowerSupply(BMU_CAN_HandleTypeDef* handle,
                                           BMU_PowerSupply_Msg_t* msg)
 {
-    if (handle == NULL || msg == NULL || !handle->is_initialized) {
+    /* MISRA C 2012 Rule 14.4: Explicit boolean check */
+    if ((handle == NULL) || (msg == NULL) || (handle->is_initialized == false)) {
         return HAL_ERROR;
     }
 
     return BMU_CAN_SendMessage(handle, CAN_ID_POWER_SUPPLY,
-                               (uint8_t*)msg, sizeof(BMU_PowerSupply_Msg_t));
+                               (uint8_t*)msg, (uint8_t)sizeof(BMU_PowerSupply_Msg_t));
 }
 
 /**
@@ -318,12 +330,13 @@ HAL_StatusTypeDef BMU_CAN_SendPowerSupply(BMU_CAN_HandleTypeDef* handle,
 HAL_StatusTypeDef BMU_CAN_SendInputStates(BMU_CAN_HandleTypeDef* handle,
                                           BMU_InputStates_Msg_t* msg)
 {
-    if (handle == NULL || msg == NULL || !handle->is_initialized) {
+    /* MISRA C 2012 Rule 14.4: Explicit boolean check */
+    if ((handle == NULL) || (msg == NULL) || (handle->is_initialized == false)) {
         return HAL_ERROR;
     }
 
     return BMU_CAN_SendMessage(handle, CAN_ID_INPUT_STATES,
-                               (uint8_t*)msg, sizeof(BMU_InputStates_Msg_t));
+                               (uint8_t*)msg, (uint8_t)sizeof(BMU_InputStates_Msg_t));
 }
 
 /**
@@ -333,17 +346,18 @@ HAL_StatusTypeDef BMU_CAN_SendBTTDetailed(BMU_CAN_HandleTypeDef* handle,
                                           uint32_t msg_id,
                                           BMU_BTT6200_Detailed_Msg_t* msg)
 {
-    if (handle == NULL || msg == NULL || !handle->is_initialized) {
+    /* MISRA C 2012 Rule 14.4: Explicit boolean check */
+    if ((handle == NULL) || (msg == NULL) || (handle->is_initialized == false)) {
         return HAL_ERROR;
     }
 
     // Validate message ID
-    if (msg_id < CAN_ID_BTT6200_DETAIL_1 || msg_id > CAN_ID_BTT6200_DETAIL_5) {
+    if ((msg_id < CAN_ID_BTT6200_DETAIL_1) || (msg_id > CAN_ID_BTT6200_DETAIL_5)) {
         return HAL_ERROR;
     }
 
     return BMU_CAN_SendMessage(handle, msg_id,
-                               (uint8_t*)msg, sizeof(BMU_BTT6200_Detailed_Msg_t));
+                               (uint8_t*)msg, (uint8_t)sizeof(BMU_BTT6200_Detailed_Msg_t));
 }
 
 /* Private functions ---------------------------------------------------------*/
@@ -377,15 +391,16 @@ static HAL_StatusTypeDef BMU_CAN_PerformRecovery(CAN_HandleTypeDef* hcan)
   */
 HAL_StatusTypeDef BMU_CAN_WaitTxMailboxFree(BMU_CAN_HandleTypeDef* handle, uint32_t timeout_ms)
 {
-    if (handle == NULL || !handle->is_initialized) {
+    /* MISRA C 2012 Rule 14.4: Explicit boolean check */
+    if ((handle == NULL) || (handle->is_initialized == false)) {
         return HAL_ERROR;
     }
 
     uint32_t start_tick = HAL_GetTick();
 
     // Wait until at least one TX mailbox is free
-    while (HAL_CAN_GetTxMailboxesFreeLevel(handle->hcan1) == 0) {
-        if (HAL_CAN_GetError(handle->hcan1) & HAL_CAN_ERROR_BOF) {
+    while (HAL_CAN_GetTxMailboxesFreeLevel(handle->hcan1) == 0U) {
+        if ((HAL_CAN_GetError(handle->hcan1) & HAL_CAN_ERROR_BOF) != 0U) {
             return BMU_CAN_PerformRecovery(handle->hcan1);
         }
         if ((HAL_GetTick() - start_tick) > timeout_ms) {
@@ -401,7 +416,8 @@ HAL_StatusTypeDef BMU_CAN_WaitTxMailboxFree(BMU_CAN_HandleTypeDef* handle, uint3
   */
 HAL_StatusTypeDef BMU_CAN_CheckAndRecover(BMU_CAN_HandleTypeDef* handle)
 {
-    if (handle == NULL || !handle->is_initialized) {
+    /* MISRA C 2012 Rule 14.4: Explicit boolean check */
+    if ((handle == NULL) || (handle->is_initialized == false)) {
         return HAL_ERROR;
     }
 
@@ -409,21 +425,21 @@ HAL_StatusTypeDef BMU_CAN_CheckAndRecover(BMU_CAN_HandleTypeDef* handle)
     HAL_CAN_StateTypeDef can_state = HAL_CAN_GetState(handle->hcan1);
 
     // BUS-OFF, ERROR, or RESET state - full recovery needed
-    if ((can_error & HAL_CAN_ERROR_BOF) ||
-        can_state == HAL_CAN_STATE_RESET ||
-        can_state == HAL_CAN_STATE_ERROR) {
+    if (((can_error & HAL_CAN_ERROR_BOF) != 0U) ||
+        (can_state == HAL_CAN_STATE_RESET) ||
+        (can_state == HAL_CAN_STATE_ERROR)) {
         return BMU_CAN_PerformRecovery(handle->hcan1);
     }
 
     // ERROR-PASSIVE or WARNING - just reset errors
-    if (can_error & (HAL_CAN_ERROR_EPV | HAL_CAN_ERROR_EWG)) {
-        HAL_CAN_ResetError(handle->hcan1);
+    if ((can_error & (HAL_CAN_ERROR_EPV | HAL_CAN_ERROR_EWG)) != 0U) {
+        (void)HAL_CAN_ResetError(handle->hcan1);
     }
 
     // INRQ set - CAN stuck in init mode
-    if (handle->hcan1->Instance->MCR & CAN_MCR_INRQ) {
-        if (HAL_CAN_Start(handle->hcan1) != HAL_OK ||
-            HAL_CAN_ActivateNotification(handle->hcan1, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
+    if ((handle->hcan1->Instance->MCR & CAN_MCR_INRQ) != 0U) {
+        if ((HAL_CAN_Start(handle->hcan1) != HAL_OK) ||
+            (HAL_CAN_ActivateNotification(handle->hcan1, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)) {
             return HAL_ERROR;
         }
     }
