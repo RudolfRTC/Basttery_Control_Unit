@@ -243,17 +243,21 @@ int main(void)
   (void)snprintf(uart_buf, sizeof(uart_buf), "CAN1 State before init: 0x%02X\r\n", hcan1.State);
   HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 
-  /* TESTING MODE: Set to 1 to enable SILENT mode (TX without ACK for solo testing) */
-  #if 0
-  // Switch to SILENT mode for testing without other CAN nodes
-  uint8_t silent_msg[] = "Switching CAN to SILENT mode (TX without ACK)...\r\n";
-  HAL_UART_Transmit(&huart1, silent_msg, sizeof(silent_msg)-1, 100);
+  /* TESTING MODE: Set to 1 to enable LOOPBACK mode (test without other CAN nodes) */
+  #if 1
+  // Switch CAN2 to LOOPBACK mode for solo testing without ACK errors
+  uint8_t loopback_msg[] = "*** CAN2 LOOPBACK MODE ENABLED ***\r\n";
+  HAL_UART_Transmit(&huart1, loopback_msg, sizeof(loopback_msg)-1, 100);
+  uint8_t loopback_info[] = "CAN2 will TX and RX its own messages (no external bus needed)\r\n";
+  HAL_UART_Transmit(&huart1, loopback_info, sizeof(loopback_info)-1, 100);
 
-  HAL_CAN_Stop(&hcan1);
-  hcan1.Init.Mode = CAN_MODE_SILENT;  // SILENT mode: TX without ACK
-  if (HAL_CAN_Init(&hcan1) != HAL_OK) {
-      uint8_t err[] = "Failed to switch to SILENT mode!\r\n";
+  hcan2.Init.Mode = CAN_MODE_LOOPBACK;  // LOOPBACK: TX -> RX internally
+  if (HAL_CAN_Init(&hcan2) != HAL_OK) {
+      uint8_t err[] = "Failed to switch CAN2 to LOOPBACK mode!\r\n";
       HAL_UART_Transmit(&huart1, err, sizeof(err)-1, 100);
+  } else {
+      uint8_t ok[] = "CAN2 LOOPBACK mode configured successfully\r\n";
+      HAL_UART_Transmit(&huart1, ok, sizeof(ok)-1, 100);
   }
   #endif
 
@@ -329,17 +333,45 @@ int main(void)
 
           if (test_status == HAL_OK) {
               (void)snprintf(uart_buf, sizeof(uart_buf),
-                  "✓ CAN2 TEST TX SUCCESS! ExtID:0x%08lX Mailbox:%lu\r\n",
+                  "✓ CAN2 AddTxMessage OK! ExtID:0x%08lX Mailbox:%lu\r\n",
                   test_header.ExtId, test_mailbox);
               HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+
+              /* Wait for TX to complete and check result */
+              HAL_Delay(100);  /* Give time for TX to complete */
+
+              can2_error = HAL_CAN_GetError(&hcan2);
+              (void)snprintf(uart_buf, sizeof(uart_buf), "CAN2 Error after TX attempt: 0x%08lX\r\n", can2_error);
+              HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+
+              /* Decode CAN2 error codes */
+              if (can2_error == 0x00000000UL) {
+                  uint8_t ok[] = "✓ NO ERRORS - CAN2 TX successful!\r\n";
+                  HAL_UART_Transmit(&huart1, ok, sizeof(ok)-1, 100);
+              } else {
+                  if ((can2_error & 0x00000004UL) != 0UL) {  /* HAL_CAN_ERROR_ACK */
+                      uint8_t ack_err[] = "✗ ACK ERROR - No device on bus acknowledged message!\r\n";
+                      HAL_UART_Transmit(&huart1, ack_err, sizeof(ack_err)-1, 100);
+                      uint8_t ack_fix[] = "  FIX: Connect another CAN device OR enable LOOPBACK mode\r\n";
+                      HAL_UART_Transmit(&huart1, ack_fix, sizeof(ack_fix)-1, 100);
+                  }
+                  if ((can2_error & 0x00000010UL) != 0UL) {  /* HAL_CAN_ERROR_BOF */
+                      uint8_t bof_err[] = "✗ BUS-OFF - Too many errors, CAN2 disabled!\r\n";
+                      HAL_UART_Transmit(&huart1, bof_err, sizeof(bof_err)-1, 100);
+                  }
+                  if ((can2_error & 0x00000001UL) != 0UL) {  /* HAL_CAN_ERROR_EWG */
+                      uint8_t ewg_err[] = "⚠ ERROR WARNING - Error count high\r\n";
+                      HAL_UART_Transmit(&huart1, ewg_err, sizeof(ewg_err)-1, 100);
+                  }
+              }
           } else {
               (void)snprintf(uart_buf, sizeof(uart_buf),
-                  "✗ CAN2 TEST TX FAILED! Status:%d\r\n", test_status);
+                  "✗ CAN2 AddTxMessage FAILED! Status:%d\r\n", test_status);
               HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 
               /* Print detailed error */
               can2_error = HAL_CAN_GetError(&hcan2);
-              (void)snprintf(uart_buf, sizeof(uart_buf), "CAN2 Error after TX: 0x%08lX\r\n", can2_error);
+              (void)snprintf(uart_buf, sizeof(uart_buf), "CAN2 Error code: 0x%08lX\r\n", can2_error);
               HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
           }
 
@@ -428,273 +460,293 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   uint32_t loop_iteration = 0;
+  uint32_t last_slow_task_tick = 0;  /* Timestamp za počasne naloge (1Hz) */
+
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  // Debug: Print loop iteration (only every 10th to reduce UART load)
-	  loop_iteration++;
-	  if (loop_iteration % 10 == 1) {  // Print 1st, 11th, 21st, etc.
-	      (void)snprintf(uart_buf, sizeof(uart_buf), "\r\n=== Loop %lu ===\r\n", loop_iteration);
-	      HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+	  uint32_t current_tick = HAL_GetTick();
+	  bool execute_slow_tasks = false;
+
+	  /* Preveri če je čas za počasne naloge (1x na sekundo) */
+	  if ((current_tick - last_slow_task_tick) >= 1000U) {
+	      execute_slow_tasks = true;
+	      last_slow_task_tick = current_tick;
+	      loop_iteration++;
 	  }
 
-	  HAL_GPIO_WritePin(PWR_24V_EN_GPIO_Port, PWR_24V_EN_Pin, SET);
-	  HAL_GPIO_WritePin(PWR_SLEEP_GPIO_Port, PWR_SLEEP_Pin, SET);
-	  HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);  // LED toggle za heartbeat
+	  /* HITRE NALOGE: Izvajaj vsakih 10-20ms */
 
-	  // Preberi in izpiši temperaturo
-	  float tC = 0.0f;
-	  int16_t temp_x100 = 0;  // Deklarirano zunaj if bloka za CAN
-	  bool is_alert = false;   // Deklarirano zunaj if bloka za CAN
-	  if (TMP1075_ReadTemperature(&htmp1075, &tC) == HAL_OK) {
-	      // Uspešno branje temperature
-	      int32_t temp_int = (int32_t)tC;
-	      int32_t temp_frac = (int32_t)((tC - (float)temp_int) * 100.0f);
-	      if (temp_frac < 0) {
-	          temp_frac = -temp_frac;  // Absolutna vrednost za decimale
-	      }
+	  // ========== DC/DC Periodic Tasks (20ms timing interno) ==========
+	  DCDC_PeriodicTask();         /* CAN2: Control frame vsakih 20ms */
+	  DCDC_Diag_PeriodicTask();    /* CAN1: Diagnostika vsakih 100ms */
 
-	      // Konvertiraj v int16_t (°C × 100) za shranjevanje v FRAM
-	      temp_x100 = (int16_t)(tC * 100.0f);
-	      is_alert = (tC < 0.0f);
+	  /* POČASNE NALOGE: Izvajaj 1x na sekundo */
+	  if (execute_slow_tasks) {
+	      float tC;
+	      int16_t temp_x100;
+	      bool is_alert;
 
-	      // Shrani v FRAM (če je inicializiran)
-	      if (htemplogger.is_initialized != false) {
-	          (void)TempLogger_LogTemperature(&htemplogger, temp_x100, is_alert);
-	      }
-
-	      // ALERT: Temperatura pod 0°C
-	      if (is_alert) {
-	          (void)snprintf(uart_buf, sizeof(uart_buf), "*** ALERT! Temperature: %d.%02d C (BELOW 0C!) ***\r\n", temp_int, temp_frac);
-	          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
-	          // Prižgi LED - hitro utripanje za alarm
-	          HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, SET);
-	          HAL_Delay(100);
-	          HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, RESET);
-	          HAL_Delay(100);
-	          HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, SET);
-	      } else {
-	          (void)snprintf(uart_buf, sizeof(uart_buf), "Temperature: %d.%02d C\r\n", temp_int, temp_frac);
-	          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
-	      }
-	  } else {
-	      uint8_t err[] = "Temperature read FAILED!\r\n";
-	      HAL_UART_Transmit(&huart1, err, sizeof(err)-1, 100);
-	  }
-
-	  // ADC DMA Debug: Prikaz ADC surovih vrednosti in DMA statistike
-	  #if 0  // Set to 1 to enable ADC DMA debug output
-	  if (hadc_dma.is_initialized) {
-	      uint32_t conv_count, error_count;
-	      if (ADC_DMA_GetStats(&hadc_dma, &conv_count, &error_count) == HAL_OK) {
-	          (void)snprintf(uart_buf, sizeof(uart_buf), "[ADC DMA] Conv: %lu, Errors: %lu\r\n", conv_count, error_count);
+	      // Debug output (samo vsakih 10 sekund)
+	      if (loop_iteration % 10U == 1U) {
+	          (void)snprintf(uart_buf, sizeof(uart_buf), "\r\n=== Loop %lu ===\r\n", loop_iteration);
 	          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 	      }
 
-	      // Prikaz surovih ADC vrednosti za LEM senzorje 1-3
-	      uint16_t adc_value;
-	      for (uint8_t i = 0; i < 3; i++) {
-	          if (ADC_DMA_GetValue(&hadc_dma, (ADC_DMA_Channel_t)i, &adc_value) == HAL_OK) {
-	              (void)snprintf(uart_buf, sizeof(uart_buf), "ADC_CH%d: %4u  ", i, adc_value);
+	      HAL_GPIO_WritePin(PWR_24V_EN_GPIO_Port, PWR_24V_EN_Pin, SET);
+	      HAL_GPIO_WritePin(PWR_SLEEP_GPIO_Port, PWR_SLEEP_Pin, SET);
+	      HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);  // LED toggle za heartbeat
+
+	      // Preberi in izpiši temperaturo
+	      tC = 0.0f;
+	      temp_x100 = 0;
+	      is_alert = false;
+	      if (TMP1075_ReadTemperature(&htmp1075, &tC) == HAL_OK) {
+	          // Uspešno branje temperature
+	          int32_t temp_int = (int32_t)tC;
+	          int32_t temp_frac = (int32_t)((tC - (float)temp_int) * 100.0f);
+	          if (temp_frac < 0) {
+	              temp_frac = -temp_frac;  // Absolutna vrednost za decimale
+	          }
+
+	          // Konvertiraj v int16_t (°C × 100) za shranjevanje v FRAM
+	          temp_x100 = (int16_t)(tC * 100.0f);
+	          is_alert = (tC < 0.0f);
+
+	          // Shrani v FRAM (če je inicializiran)
+	          if (htemplogger.is_initialized != false) {
+	              (void)TempLogger_LogTemperature(&htemplogger, temp_x100, is_alert);
+	          }
+
+	          // ALERT: Temperatura pod 0°C
+	          if (is_alert) {
+	              (void)snprintf(uart_buf, sizeof(uart_buf), "*** ALERT! Temperature: %d.%02d C (BELOW 0C!) ***\r\n", temp_int, temp_frac);
+	              HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+	              // Prižgi LED - hitro utripanje za alarm
+	              HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, SET);
+	              HAL_Delay(100);
+	              HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, RESET);
+	              HAL_Delay(100);
+	              HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, SET);
+	          } else {
+	              (void)snprintf(uart_buf, sizeof(uart_buf), "Temperature: %d.%02d C\r\n", temp_int, temp_frac);
 	              HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 	          }
-	      }
-	      uint8_t nl[] = "\r\n";
-	      HAL_UART_Transmit(&huart1, nl, sizeof(nl)-1, 100);
-	  }
-	  #endif
-
-	  // Preberi LEM sensorje (prikaz prvih 3 za demo)
-	  float lem_currents[3];
-	  for (uint8_t i = 0; i < 3; i++) {
-	      if (LEM_Config_ReadCurrentFiltered(i, &lem_currents[i]) == HAL_OK) {
-	          int curr_int = (int)lem_currents[i];
-	          int curr_frac = (int)(fabsf(lem_currents[i] - curr_int) * 1000);
-	          (void)snprintf(uart_buf, sizeof(uart_buf), "LEM_%d: %d.%03d A  ", i+1, curr_int, curr_frac);
-	          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
-	      }
-	  }
-	  uint8_t newline[] = "\r\n";
-	  HAL_UART_Transmit(&huart1, newline, sizeof(newline)-1, 100);
-
-	  // Preveri overcurrent na vseh LEM senzorjih
-	  uint16_t oc_flags = 0;
-	  LEM_Config_CheckOvercurrents(&oc_flags);
-	  if (oc_flags != 0) {
-	      (void)snprintf(uart_buf, sizeof(uart_buf), "*** OVERCURRENT DETECTED! Flags: 0x%04X ***\r\n", oc_flags);
-	      HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
-	  }
-
-	  // ========== CAN Bus Data Transmission ==========
-	  // Check and recover from CAN errors (BUS-OFF, etc.)
-	  if (hbmucan.is_initialized) {
-	      BMU_CAN_CheckAndRecover(&hbmucan);
-	  }
-
-	  // Debug: Check CAN state (only print every 10th or if error detected)
-	  HAL_CAN_StateTypeDef can_state = HAL_CAN_GetState(&hcan1);
-	  uint32_t free_mailboxes = HAL_CAN_GetTxMailboxesFreeLevel(&hcan1);
-	  uint32_t can_error = HAL_CAN_GetError(&hcan1);
-
-	  if (loop_iteration % 10 == 1 || can_error != 0) {
-	      (void)snprintf(uart_buf, sizeof(uart_buf), "[CAN] Init:%d State:0x%02X FreeMB:%lu Err:0x%lX\r\n",
-	                    hbmucan.is_initialized, can_state, free_mailboxes, can_error);
-	      HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 10);
-	  }
-
-	  if (hbmucan.is_initialized) {
-	      // Only print TX start message every 10th iteration
-	      if (loop_iteration % 10 == 1) {
-	          uint8_t tx_start[] = "[CAN] TX sequence...\r\n";
-	          HAL_UART_Transmit(&huart1, tx_start, sizeof(tx_start)-1, 10);
-	      }
-	      // 1. Pošlji Temperature message (0x101)
-	      BMU_Temperature_Msg_t temp_msg = {0};
-	      temp_msg.temperature_C = temp_x100;
-	      temp_msg.alert_flag = is_alert ? 1 : 0;
-	      temp_msg.sensor_status = 0;
-	      if (htemplogger.is_initialized) {
-	          TempLog_Stats_t stats;
-	          if (TempLogger_GetStats(&htemplogger, &stats) == HAL_OK) {
-	              temp_msg.min_temp_C = stats.min_temp;
-	              temp_msg.max_temp_C = stats.max_temp;
-	          }
-	      }
-	      BMU_CAN_SendTemperature(&hbmucan, &temp_msg);
-
-	      // 2. Pošlji Power Supply Status (0x102)
-	      BMU_PowerSupply_Msg_t pwr_msg = {0};
-	      pwr_msg.pg_5v = HAL_GPIO_ReadPin(PG_5V_GPIO_Port, PG_5V_Pin);
-	      pwr_msg.pg_3v3a = HAL_GPIO_ReadPin(PG_3V3A_GPIO_Port, PG_3V3A_Pin);
-	      pwr_msg.pwr_sleep_state = HAL_GPIO_ReadPin(PWR_SLEEP_GPIO_Port, PWR_SLEEP_Pin);
-
-	      /* PWR_CURRENT: Read from ADC_IN15 (PC5) via DMA
-	       * PWR_VOLTAGE: Not configured in hardware - using nominal value
-	       *
-	       * NOTE: Za pravo merjenje 24V napetosti je potreben:
-	       * 1. Voltage divider circuit (npr. 10k/1k = 11:1 ratio za 24V->2.18V)
-	       * 2. Dodaten ADC kanal v CubeMX konfiguraciji
-	       * 3. Kalibracija voltage divider faktorja
-	       */
-
-	      // Read PWR_CURRENT from ADC DMA buffer (IN15)
-	      uint16_t pwr_current_adc = 0;
-	      if (hadc_dma.is_initialized) {
-	          ADC_DMA_GetValue(&hadc_dma, ADC_DMA_PWR_CURRENT, &pwr_current_adc);
+	      } else {
+	          uint8_t err[] = "Temperature read FAILED!\r\n";
+	          HAL_UART_Transmit(&huart1, err, sizeof(err)-1, 100);
 	      }
 
-	      // Convert ADC to current (assuming current sense resistor circuit)
-	      // TODO: Adjust conversion factor based on hardware design
-	      // Typical: V_adc = (I_load * R_sense * Gain) where R_sense ~0.1 ohm, Gain=50
-	      // I_load = V_adc / (R_sense * Gain)
-	      // For 3.3V ref, 12-bit ADC: V_adc = (adc_value * 3300) / 4095
-	      uint32_t voltage_uV = ((uint32_t)pwr_current_adc * 3300000UL) / 4095UL;
-	      pwr_msg.pwr_current_mA = (uint16_t)(voltage_uV / 5000UL);  // Adjust divisor based on R_sense and gain
+	        // ADC DMA Debug: Prikaz ADC surovih vrednosti in DMA statistike
+	        #if 0  // Set to 1 to enable ADC DMA debug output
+	        if (hadc_dma.is_initialized) {
+	            uint32_t conv_count, error_count;
+	            if (ADC_DMA_GetStats(&hadc_dma, &conv_count, &error_count) == HAL_OK) {
+	                (void)snprintf(uart_buf, sizeof(uart_buf), "[ADC DMA] Conv: %lu, Errors: %lu\r\n", conv_count, error_count);
+	                HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+	            }
 
-	      // PWR_VOLTAGE: Use nominal value (no ADC sensing configured)
-	      // Alternative: Could monitor PG_24V flag and return 0 if power fault
-	      pwr_msg.pwr_voltage_mV = 24000U;  // Nominal 24V (hardware sensing not implemented)
-	      pwr_msg.pg_24v = (pwr_msg.pwr_voltage_mV > 20000U) ? 1U : 0U;
-	      BMU_CAN_SendPowerSupply(&hbmucan, &pwr_msg);
+	            // Prikaz surovih ADC vrednosti za LEM senzorje 1-3
+	            uint16_t adc_value;
+	            for (uint8_t i = 0; i < 3; i++) {
+	                if (ADC_DMA_GetValue(&hadc_dma, (ADC_DMA_Channel_t)i, &adc_value) == HAL_OK) {
+	                    (void)snprintf(uart_buf, sizeof(uart_buf), "ADC_CH%d: %4u  ", i, adc_value);
+	                    HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+	                }
+	            }
+	            uint8_t nl[] = "\r\n";
+	            HAL_UART_Transmit(&huart1, nl, sizeof(nl)-1, 100);
+	        }
+	        #endif
 
-	      // 3. Pošlji Input States (0x103)
-	      BMU_InputStates_Msg_t input_msg = {0};
-	      input_msg.input_states = 0;
-	      // Preberi vseh 20 digitalnih inputov (IN_1 do IN_20)
-	      if (HAL_GPIO_ReadPin(IN_1_GPIO_Port, IN_1_Pin)) input_msg.input_states |= (1 << 0);
-	      if (HAL_GPIO_ReadPin(IN_2_GPIO_Port, IN_2_Pin)) input_msg.input_states |= (1 << 1);
-	      if (HAL_GPIO_ReadPin(IN_3_GPIO_Port, IN_3_Pin)) input_msg.input_states |= (1 << 2);
-	      if (HAL_GPIO_ReadPin(IN_4_GPIO_Port, IN_4_Pin)) input_msg.input_states |= (1 << 3);
-	      if (HAL_GPIO_ReadPin(IN_5_GPIO_Port, IN_5_Pin)) input_msg.input_states |= (1 << 4);
-	      if (HAL_GPIO_ReadPin(IN_6_GPIO_Port, IN_6_Pin)) input_msg.input_states |= (1 << 5);
-	      if (HAL_GPIO_ReadPin(IN_7_GPIO_Port, IN_7_Pin)) input_msg.input_states |= (1 << 6);
-	      if (HAL_GPIO_ReadPin(IN_8_GPIO_Port, IN_8_Pin)) input_msg.input_states |= (1 << 7);
-	      if (HAL_GPIO_ReadPin(IN_9_GPIO_Port, IN_9_Pin)) input_msg.input_states |= (1 << 8);
-	      if (HAL_GPIO_ReadPin(IN_10_GPIO_Port, IN_10_Pin)) input_msg.input_states |= (1 << 9);
-	      if (HAL_GPIO_ReadPin(IN_11_GPIO_Port, IN_11_Pin)) input_msg.input_states |= (1 << 10);
-	      if (HAL_GPIO_ReadPin(IN_12_GPIO_Port, IN_12_Pin)) input_msg.input_states |= (1 << 11);
-	      if (HAL_GPIO_ReadPin(IN_13_GPIO_Port, IN_13_Pin)) input_msg.input_states |= (1 << 12);
-	      if (HAL_GPIO_ReadPin(IN_14_GPIO_Port, IN_14_Pin)) input_msg.input_states |= (1 << 13);
-	      if (HAL_GPIO_ReadPin(IN_15_GPIO_Port, IN_15_Pin)) input_msg.input_states |= (1 << 14);
-	      if (HAL_GPIO_ReadPin(IN_16_GPIO_Port, IN_16_Pin)) input_msg.input_states |= (1 << 15);
-	      if (HAL_GPIO_ReadPin(IN_17_GPIO_Port, IN_17_Pin)) input_msg.input_states |= (1 << 16);
-	      if (HAL_GPIO_ReadPin(IN_18_GPIO_Port, IN_18_Pin)) input_msg.input_states |= (1 << 17);
-	      if (HAL_GPIO_ReadPin(IN_19_GPIO_Port, IN_19_Pin)) input_msg.input_states |= (1 << 18);
-	      if (HAL_GPIO_ReadPin(IN_20_GPIO_Port, IN_20_Pin)) input_msg.input_states |= (1 << 19);
-	      BMU_CAN_SendInputStates(&hbmucan, &input_msg);
+	        // Preberi LEM sensorje (prikaz prvih 3 za demo)
+	        float lem_currents[3];
+	        for (uint8_t i = 0; i < 3; i++) {
+	            if (LEM_Config_ReadCurrentFiltered(i, &lem_currents[i]) == HAL_OK) {
+	                int curr_int = (int)lem_currents[i];
+	                int curr_frac = (int)(fabsf(lem_currents[i] - curr_int) * 1000);
+	                (void)snprintf(uart_buf, sizeof(uart_buf), "LEM_%d: %d.%03d A  ", i+1, curr_int, curr_frac);
+	                HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+	            }
+	        }
+	        uint8_t newline[] = "\r\n";
+	        HAL_UART_Transmit(&huart1, newline, sizeof(newline)-1, 100);
 
-	      // 4. Pošlji LEM Current messages (0x110-0x112) - FIXED
-	      float all_lem_currents[10];
-	      LEM_Config_ReadAllCurrents(all_lem_currents);
+	        // Preveri overcurrent na vseh LEM senzorjih
+	        uint16_t oc_flags = 0;
+	        LEM_Config_CheckOvercurrents(&oc_flags);
+	        if (oc_flags != 0) {
+	            (void)snprintf(uart_buf, sizeof(uart_buf), "*** OVERCURRENT DETECTED! Flags: 0x%04X ***\r\n", oc_flags);
+	            HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+	        }
 
-	      BMU_LEM_Current_Msg_t lem_msg1 = {0};
-	      lem_msg1.current_1_mA = (int16_t)(all_lem_currents[0] * 1000);
-	      lem_msg1.current_2_mA = (int16_t)(all_lem_currents[1] * 1000);
-	      lem_msg1.current_3_mA = (int16_t)(all_lem_currents[2] * 1000);
-	      lem_msg1.current_4_mA = (int16_t)(all_lem_currents[3] * 1000);
-	      BMU_CAN_SendLEMCurrent(&hbmucan, CAN_ID_LEM_CURRENT_1, &lem_msg1);
+	        // ========== CAN Bus Data Transmission ==========
+	        // Check and recover from CAN errors (BUS-OFF, etc.)
+	        if (hbmucan.is_initialized) {
+	            BMU_CAN_CheckAndRecover(&hbmucan);
+	        }
 
-	      BMU_LEM_Current_Msg_t lem_msg2 = {0};
-	      lem_msg2.current_1_mA = (int16_t)(all_lem_currents[4] * 1000);
-	      lem_msg2.current_2_mA = (int16_t)(all_lem_currents[5] * 1000);
-	      lem_msg2.current_3_mA = (int16_t)(all_lem_currents[6] * 1000);
-	      lem_msg2.current_4_mA = (int16_t)(all_lem_currents[7] * 1000);
-	      BMU_CAN_SendLEMCurrent(&hbmucan, CAN_ID_LEM_CURRENT_2, &lem_msg2);
+	        // Debug: Check CAN state (only print every 10th or if error detected)
+	        HAL_CAN_StateTypeDef can_state = HAL_CAN_GetState(&hcan1);
+	        uint32_t free_mailboxes = HAL_CAN_GetTxMailboxesFreeLevel(&hcan1);
+	        uint32_t can_error = HAL_CAN_GetError(&hcan1);
 
-	      BMU_LEM_Current_Msg_t lem_msg3 = {0};
-	      lem_msg3.current_1_mA = (int16_t)(all_lem_currents[8] * 1000);
-	      lem_msg3.current_2_mA = (int16_t)(all_lem_currents[9] * 1000);
-	      lem_msg3.current_3_mA = 0;
-	      lem_msg3.current_4_mA = 0;
-	      BMU_CAN_SendLEMCurrent(&hbmucan, CAN_ID_LEM_CURRENT_3, &lem_msg3);
+	        if (loop_iteration % 10 == 1 || can_error != 0) {
+	            (void)snprintf(uart_buf, sizeof(uart_buf), "[CAN] Init:%d State:0x%02X FreeMB:%lu Err:0x%lX\r\n",
+	                          hbmucan.is_initialized, can_state, free_mailboxes, can_error);
+	            HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 10);
+	        }
 
-	      // 5. Pošlji BTT6200 Detailed Status (0x124-0x128) - vseh 20 outputov
-	      for (uint8_t msg_idx = 0; msg_idx < 5; msg_idx++) {
-	          BMU_BTT6200_Detailed_Msg_t btt_detail = {0};
-	          uint8_t base_out = msg_idx * 4;
+	        if (hbmucan.is_initialized) {
+	            // Only print TX start message every 10th iteration
+	            if (loop_iteration % 10 == 1) {
+	                uint8_t tx_start[] = "[CAN] TX sequence...\r\n";
+	                HAL_UART_Transmit(&huart1, tx_start, sizeof(tx_start)-1, 10);
+	            }
+	            // 1. Pošlji Temperature message (0x101)
+	            BMU_Temperature_Msg_t temp_msg = {0};
+	            temp_msg.temperature_C = temp_x100;
+	            temp_msg.alert_flag = is_alert ? 1 : 0;
+	            temp_msg.sensor_status = 0;
+	            if (htemplogger.is_initialized) {
+	                TempLog_Stats_t stats;
+	                if (TempLogger_GetStats(&htemplogger, &stats) == HAL_OK) {
+	                    temp_msg.min_temp_C = stats.min_temp;
+	                    temp_msg.max_temp_C = stats.max_temp;
+	                }
+	            }
+	            BMU_CAN_SendTemperature(&hbmucan, &temp_msg);
 
-	          // STATUS_OK means channel is enabled and working
-	          btt_detail.out0_state = (BTT6200_Config_GetStatus(base_out + 0) == BTT6200_STATUS_OK) ? 1U : 0U;
-	          btt_detail.out1_state = (BTT6200_Config_GetStatus(base_out + 1) == BTT6200_STATUS_OK) ? 1U : 0U;
-	          btt_detail.out2_state = (BTT6200_Config_GetStatus(base_out + 2) == BTT6200_STATUS_OK) ? 1U : 0U;
-	          btt_detail.out3_state = (BTT6200_Config_GetStatus(base_out + 3) == BTT6200_STATUS_OK) ? 1U : 0U;
+	            // 2. Pošlji Power Supply Status (0x102)
+	            BMU_PowerSupply_Msg_t pwr_msg = {0};
+	            pwr_msg.pg_5v = HAL_GPIO_ReadPin(PG_5V_GPIO_Port, PG_5V_Pin);
+	            pwr_msg.pg_3v3a = HAL_GPIO_ReadPin(PG_3V3A_GPIO_Port, PG_3V3A_Pin);
+	            pwr_msg.pwr_sleep_state = HAL_GPIO_ReadPin(PWR_SLEEP_GPIO_Port, PWR_SLEEP_Pin);
 
-	          uint32_t curr_mA;
-	          BTT6200_Config_ReadCurrent(base_out + 0, &curr_mA);
-	          btt_detail.out0_current_mA = (uint16_t)curr_mA;
-	          BTT6200_Config_ReadCurrent(base_out + 1, &curr_mA);
-	          btt_detail.out1_current_mA = (uint16_t)curr_mA;
+	            /* PWR_CURRENT: Read from ADC_IN15 (PC5) via DMA
+	             * PWR_VOLTAGE: Not configured in hardware - using nominal value
+	             *
+	             * NOTE: Za pravo merjenje 24V napetosti je potreben:
+	             * 1. Voltage divider circuit (npr. 10k/1k = 11:1 ratio za 24V->2.18V)
+	             * 2. Dodaten ADC kanal v CubeMX konfiguraciji
+	             * 3. Kalibracija voltage divider faktorja
+	             */
 
-	          BMU_CAN_SendBTTDetailed(&hbmucan, CAN_ID_BTT6200_DETAIL_1 + msg_idx, &btt_detail);
-	      }
+	            // Read PWR_CURRENT from ADC DMA buffer (IN15)
+	            uint16_t pwr_current_adc = 0;
+	            if (hadc_dma.is_initialized) {
+	                ADC_DMA_GetValue(&hadc_dma, ADC_DMA_PWR_CURRENT, &pwr_current_adc);
+	            }
 
-	      // 6. Pošlji Heartbeat (0x1FF)
-	      BMU_CAN_SendHeartbeat(&hbmucan, can_heartbeat_counter++);
+	            // Convert ADC to current (assuming current sense resistor circuit)
+	            // TODO: Adjust conversion factor based on hardware design
+	            // Typical: V_adc = (I_load * R_sense * Gain) where R_sense ~0.1 ohm, Gain=50
+	            // I_load = V_adc / (R_sense * Gain)
+	            // For 3.3V ref, 12-bit ADC: V_adc = (adc_value * 3300) / 4095
+	            uint32_t voltage_uV = ((uint32_t)pwr_current_adc * 3300000UL) / 4095UL;
+	            pwr_msg.pwr_current_mA = (uint16_t)(voltage_uV / 5000UL);  // Adjust divisor based on R_sense and gain
 
-	      // Debug: CAN TX complete - print stats only every 10th iteration
-	      if (loop_iteration % 10 == 1) {
-	          uint32_t tx_count, rx_count, err_count;
-	          BMU_CAN_GetStats(&hbmucan, &tx_count, &rx_count, &err_count);
-	          (void)snprintf(uart_buf, sizeof(uart_buf), "[CAN] Stats: TX:%lu RX:%lu ERR:%lu\r\n",
-	                        tx_count, rx_count, err_count);
-	          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 10);
-	      }
-	  } else {
-	      uint8_t not_init[] = "[CAN] NOT INITIALIZED - skipping TX!\r\n";
-	      HAL_UART_Transmit(&huart1, not_init, sizeof(not_init)-1, 100);
-	  }
+	            // PWR_VOLTAGE: Use nominal value (no ADC sensing configured)
+	            // Alternative: Could monitor PG_24V flag and return 0 if power fault
+	            pwr_msg.pwr_voltage_mV = 24000U;  // Nominal 24V (hardware sensing not implemented)
+	            pwr_msg.pg_24v = (pwr_msg.pwr_voltage_mV > 20000U) ? 1U : 0U;
+	            BMU_CAN_SendPowerSupply(&hbmucan, &pwr_msg);
 
-	  // ========== DC/DC Periodic Tasks ==========
-	  /* CAN2: Pošiljaj control frame vsakih 20ms */
-	  DCDC_PeriodicTask();
+	            // 3. Pošlji Input States (0x103)
+	            BMU_InputStates_Msg_t input_msg = {0};
+	            input_msg.input_states = 0;
+	            // Preberi vseh 20 digitalnih inputov (IN_1 do IN_20)
+	            if (HAL_GPIO_ReadPin(IN_1_GPIO_Port, IN_1_Pin)) input_msg.input_states |= (1 << 0);
+	            if (HAL_GPIO_ReadPin(IN_2_GPIO_Port, IN_2_Pin)) input_msg.input_states |= (1 << 1);
+	            if (HAL_GPIO_ReadPin(IN_3_GPIO_Port, IN_3_Pin)) input_msg.input_states |= (1 << 2);
+	            if (HAL_GPIO_ReadPin(IN_4_GPIO_Port, IN_4_Pin)) input_msg.input_states |= (1 << 3);
+	            if (HAL_GPIO_ReadPin(IN_5_GPIO_Port, IN_5_Pin)) input_msg.input_states |= (1 << 4);
+	            if (HAL_GPIO_ReadPin(IN_6_GPIO_Port, IN_6_Pin)) input_msg.input_states |= (1 << 5);
+	            if (HAL_GPIO_ReadPin(IN_7_GPIO_Port, IN_7_Pin)) input_msg.input_states |= (1 << 6);
+	            if (HAL_GPIO_ReadPin(IN_8_GPIO_Port, IN_8_Pin)) input_msg.input_states |= (1 << 7);
+	            if (HAL_GPIO_ReadPin(IN_9_GPIO_Port, IN_9_Pin)) input_msg.input_states |= (1 << 8);
+	            if (HAL_GPIO_ReadPin(IN_10_GPIO_Port, IN_10_Pin)) input_msg.input_states |= (1 << 9);
+	            if (HAL_GPIO_ReadPin(IN_11_GPIO_Port, IN_11_Pin)) input_msg.input_states |= (1 << 10);
+	            if (HAL_GPIO_ReadPin(IN_12_GPIO_Port, IN_12_Pin)) input_msg.input_states |= (1 << 11);
+	            if (HAL_GPIO_ReadPin(IN_13_GPIO_Port, IN_13_Pin)) input_msg.input_states |= (1 << 12);
+	            if (HAL_GPIO_ReadPin(IN_14_GPIO_Port, IN_14_Pin)) input_msg.input_states |= (1 << 13);
+	            if (HAL_GPIO_ReadPin(IN_15_GPIO_Port, IN_15_Pin)) input_msg.input_states |= (1 << 14);
+	            if (HAL_GPIO_ReadPin(IN_16_GPIO_Port, IN_16_Pin)) input_msg.input_states |= (1 << 15);
+	            if (HAL_GPIO_ReadPin(IN_17_GPIO_Port, IN_17_Pin)) input_msg.input_states |= (1 << 16);
+	            if (HAL_GPIO_ReadPin(IN_18_GPIO_Port, IN_18_Pin)) input_msg.input_states |= (1 << 17);
+	            if (HAL_GPIO_ReadPin(IN_19_GPIO_Port, IN_19_Pin)) input_msg.input_states |= (1 << 18);
+	            if (HAL_GPIO_ReadPin(IN_20_GPIO_Port, IN_20_Pin)) input_msg.input_states |= (1 << 19);
+	            BMU_CAN_SendInputStates(&hbmucan, &input_msg);
 
-	  /* CAN1: Pošiljaj diagnostiko vsakih 100ms */
-	  DCDC_Diag_PeriodicTask();
+	            // 4. Pošlji LEM Current messages (0x110-0x112) - FIXED
+	            float all_lem_currents[10];
+	            LEM_Config_ReadAllCurrents(all_lem_currents);
+
+	            BMU_LEM_Current_Msg_t lem_msg1 = {0};
+	            lem_msg1.current_1_mA = (int16_t)(all_lem_currents[0] * 1000);
+	            lem_msg1.current_2_mA = (int16_t)(all_lem_currents[1] * 1000);
+	            lem_msg1.current_3_mA = (int16_t)(all_lem_currents[2] * 1000);
+	            lem_msg1.current_4_mA = (int16_t)(all_lem_currents[3] * 1000);
+	            BMU_CAN_SendLEMCurrent(&hbmucan, CAN_ID_LEM_CURRENT_1, &lem_msg1);
+
+	            BMU_LEM_Current_Msg_t lem_msg2 = {0};
+	            lem_msg2.current_1_mA = (int16_t)(all_lem_currents[4] * 1000);
+	            lem_msg2.current_2_mA = (int16_t)(all_lem_currents[5] * 1000);
+	            lem_msg2.current_3_mA = (int16_t)(all_lem_currents[6] * 1000);
+	            lem_msg2.current_4_mA = (int16_t)(all_lem_currents[7] * 1000);
+	            BMU_CAN_SendLEMCurrent(&hbmucan, CAN_ID_LEM_CURRENT_2, &lem_msg2);
+
+	            BMU_LEM_Current_Msg_t lem_msg3 = {0};
+	            lem_msg3.current_1_mA = (int16_t)(all_lem_currents[8] * 1000);
+	            lem_msg3.current_2_mA = (int16_t)(all_lem_currents[9] * 1000);
+	            lem_msg3.current_3_mA = 0;
+	            lem_msg3.current_4_mA = 0;
+	            BMU_CAN_SendLEMCurrent(&hbmucan, CAN_ID_LEM_CURRENT_3, &lem_msg3);
+
+	            // 5. Pošlji BTT6200 Detailed Status (0x124-0x128) - vseh 20 outputov
+	            for (uint8_t msg_idx = 0; msg_idx < 5; msg_idx++) {
+	                BMU_BTT6200_Detailed_Msg_t btt_detail = {0};
+	                uint8_t base_out = msg_idx * 4;
+
+	                // STATUS_OK means channel is enabled and working
+	                btt_detail.out0_state = (BTT6200_Config_GetStatus(base_out + 0) == BTT6200_STATUS_OK) ? 1U : 0U;
+	                btt_detail.out1_state = (BTT6200_Config_GetStatus(base_out + 1) == BTT6200_STATUS_OK) ? 1U : 0U;
+	                btt_detail.out2_state = (BTT6200_Config_GetStatus(base_out + 2) == BTT6200_STATUS_OK) ? 1U : 0U;
+	                btt_detail.out3_state = (BTT6200_Config_GetStatus(base_out + 3) == BTT6200_STATUS_OK) ? 1U : 0U;
+
+	                uint32_t curr_mA;
+	                BTT6200_Config_ReadCurrent(base_out + 0, &curr_mA);
+	                btt_detail.out0_current_mA = (uint16_t)curr_mA;
+	                BTT6200_Config_ReadCurrent(base_out + 1, &curr_mA);
+	                btt_detail.out1_current_mA = (uint16_t)curr_mA;
+
+	                BMU_CAN_SendBTTDetailed(&hbmucan, CAN_ID_BTT6200_DETAIL_1 + msg_idx, &btt_detail);
+	            }
+
+	            // 6. Pošlji Heartbeat (0x1FF)
+	            BMU_CAN_SendHeartbeat(&hbmucan, can_heartbeat_counter++);
+
+	            // Debug: CAN TX complete - print stats only every 10th iteration
+	            if (loop_iteration % 10 == 1) {
+	                uint32_t tx_count, rx_count, err_count;
+	                BMU_CAN_GetStats(&hbmucan, &tx_count, &rx_count, &err_count);
+	                (void)snprintf(uart_buf, sizeof(uart_buf), "[CAN] Stats: TX:%lu RX:%lu ERR:%lu\r\n",
+	                              tx_count, rx_count, err_count);
+	                HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 10);
+	            }
+	        } else {
+	            uint8_t not_init[] = "[CAN] NOT INITIALIZED - skipping TX!\r\n";
+	            HAL_UART_Transmit(&huart1, not_init, sizeof(not_init)-1, 100);
+	        }
+
+	  }  /* Konec execute_slow_tasks bloka */
 
 	  // ========== Main Loop Delay ==========
-	  HAL_Delay(1000);
+	  /* KRITIČNO: Kratek delay (10ms) za 50Hz loop rate */
+	  /* To omogoči DCDC_PeriodicTask() pošiljanje na 20ms! */
+	  HAL_Delay(10);
 
 #if 0  /* TEST CODE - Disabled for production */
 	  // BTT6200 channel test sequence (enable manually for testing)
