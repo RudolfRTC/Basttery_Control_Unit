@@ -430,7 +430,7 @@ static HAL_StatusTypeDef BMU_CAN_SendMessage(BMU_CAN_HandleTypeDef* handle,
     }
 
     // DEBUG: Print all TX attempts
-    #if 0  // Set to 1 to see ALL CAN TX attempts
+    #if 1  // ENABLED for debugging - set to 0 for production
     extern UART_HandleTypeDef huart1;
     char debug_buf[80];
     (void)snprintf(debug_buf, sizeof(debug_buf), "[CAN TX] ID:0x%03lX DLC:%d %s\r\n",
@@ -605,9 +605,9 @@ void BMU_CAN_RxCallback(CAN_HandleTypeDef* hcan)
         // Process the received message (do this FIRST for speed)
         HAL_StatusTypeDef result = BMU_CAN_ProcessRxMessage(g_bmu_can_handle, &rx_header, rx_data);
 
-        // DEBUG: Verbose output (DISABLED by default - causes interrupt delays!)
-        // Set to 1 only for debugging, not for production
-        #if 0
+        // DEBUG: Verbose output (ENABLED for debugging)
+        // Set to 0 for production (causes interrupt delays!)
+        #if 1
         extern UART_HandleTypeDef huart1;
         char debug_buf[150];
         (void)snprintf(debug_buf, sizeof(debug_buf),
@@ -630,8 +630,8 @@ void BMU_CAN_RxCallback(CAN_HandleTypeDef* hcan)
         }
         #endif
 
-        // Lightweight debug (only on error) - MUCH faster!
-        #if 1
+        // Lightweight debug (DISABLED - using verbose above)
+        #if 0
         if (result != HAL_OK) {
             extern UART_HandleTypeDef huart1;
             const char* msg = "[CAN RX] ERR\r\n";

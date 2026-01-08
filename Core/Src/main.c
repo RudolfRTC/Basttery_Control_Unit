@@ -245,9 +245,12 @@ int main(void)
       (void)snprintf(uart_buf, sizeof(uart_buf), "CAN1 Error Code: 0x%08lX\r\n", can_error);
       HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 
-      /* DIAGNOSTICS: Uncomment to run full CAN diagnostics */
-      #if 1  // Set to 1 to enable CAN diagnostics, 0 to disable
+      /* DIAGNOSTICS: Set to 0 to disable diagnostics for testing */
+      #if 0  // DISABLED for debugging - diagnostika lahko povzroča probleme
       CAN_RunDiagnostics(&hcan1, &huart1);
+      #else
+      uint8_t diag_skip[] = "CAN diagnostics SKIPPED (disabled for debugging)\r\n";
+      HAL_UART_Transmit(&huart1, diag_skip, sizeof(diag_skip)-1, 100);
       #endif
   } else {
       uint8_t can_fail[] = "CAN initialization FAILED!\r\n";
@@ -277,11 +280,17 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  uint32_t loop_iteration = 0;
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  // Debug: Print loop iteration every cycle
+	  loop_iteration++;
+	  (void)snprintf(uart_buf, sizeof(uart_buf), "\r\n=== Loop %lu ===\r\n", loop_iteration);
+	  HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+
 	  HAL_GPIO_WritePin(PWR_24V_EN_GPIO_Port, PWR_24V_EN_Pin, SET);
 	  HAL_GPIO_WritePin(PWR_SLEEP_GPIO_Port, PWR_SLEEP_Pin, SET);
 	  HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);  // LED toggle za heartbeat
@@ -370,17 +379,16 @@ int main(void)
 	  }
 
 	  // ========== CAN Bus Data Transmission ==========
-	  #if 1  // Debug: Check CAN state before TX
-	  static uint32_t debug_counter = 0;
-	  if (++debug_counter % 10 == 0) {  // Every 10 seconds
-	      HAL_CAN_StateTypeDef can_state = HAL_CAN_GetState(&hcan1);
-	      (void)snprintf(uart_buf, sizeof(uart_buf), "[DEBUG] CAN Init:%d State:0x%02X\r\n",
-	                    hbmucan.is_initialized, can_state);
-	      HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
-	  }
-	  #endif
+	  // Debug: Check CAN state before TX (EVERY iteration for debugging)
+	  HAL_CAN_StateTypeDef can_state = HAL_CAN_GetState(&hcan1);
+	  uint32_t free_mailboxes = HAL_CAN_GetTxMailboxesFreeLevel(&hcan1);
+	  (void)snprintf(uart_buf, sizeof(uart_buf), "[CAN] Init:%d State:0x%02X FreeMB:%lu\r\n",
+	                hbmucan.is_initialized, can_state, free_mailboxes);
+	  HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 
 	  if (hbmucan.is_initialized) {
+	      uint8_t tx_start[] = "[CAN] Starting TX sequence (12 messages)...\r\n";
+	      HAL_UART_Transmit(&huart1, tx_start, sizeof(tx_start)-1, 100);
 	      // 1. Pošlji Temperature message (0x101)
 	      BMU_Temperature_Msg_t temp_msg = {0};
 	      temp_msg.temperature_C = temp_x100;
@@ -504,13 +512,15 @@ int main(void)
 	      // 6. Pošlji Heartbeat (0x1FF)
 	      BMU_CAN_SendHeartbeat(&hbmucan, can_heartbeat_counter++);
 
-	      // Debug: CAN stats
-	      if (can_heartbeat_counter % 10 == 0) {
-	          uint32_t tx_count, rx_count, err_count;
-	          BMU_CAN_GetStats(&hbmucan, &tx_count, &rx_count, &err_count);
-	          (void)snprintf(uart_buf, sizeof(uart_buf), "[CAN] TX:%lu RX:%lu ERR:%lu\r\n", tx_count, rx_count, err_count);
-	          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
-	      }
+	      // Debug: CAN TX complete - print stats EVERY iteration
+	      uint32_t tx_count, rx_count, err_count;
+	      BMU_CAN_GetStats(&hbmucan, &tx_count, &rx_count, &err_count);
+	      (void)snprintf(uart_buf, sizeof(uart_buf), "[CAN] TX sequence DONE! Stats - TX:%lu RX:%lu ERR:%lu\r\n",
+	                    tx_count, rx_count, err_count);
+	      HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+	  } else {
+	      uint8_t not_init[] = "[CAN] NOT INITIALIZED - skipping TX!\r\n";
+	      HAL_UART_Transmit(&huart1, not_init, sizeof(not_init)-1, 100);
 	  }
 
 	  // ========== Main Loop Delay ==========
