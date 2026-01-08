@@ -415,6 +415,20 @@ static bool DCDC_TransmitCANMessage(uint32_t can_id, const uint8_t *data, uint8_
     /* Add message to TX mailbox */
     status = HAL_CAN_AddTxMessage(&hcan2, &tx_header, tx_data, &tx_mailbox);
 
+    /* DEBUG: Print CAN2 TX status */
+    #if 1
+    {
+        extern UART_HandleTypeDef huart1;
+        char debug_buf[80];
+        if (status == HAL_OK) {
+            (void)snprintf(debug_buf, sizeof(debug_buf), "[CAN2 TX OK] ExtID:0x%08lX DLC:%u\r\n", can_id, dlc);
+        } else {
+            (void)snprintf(debug_buf, sizeof(debug_buf), "[CAN2 TX ERR] ExtID:0x%08lX Status:%d\r\n", can_id, status);
+        }
+        (void)HAL_UART_Transmit(&huart1, (uint8_t*)debug_buf, (uint16_t)strlen(debug_buf), 10);
+    }
+    #endif
+
     return (status == HAL_OK);
 }
 

@@ -313,6 +313,15 @@ int main(void)
       if (DCDC_Configure(0, &dcdc_config) && DCDC_Configure(1, &dcdc_config)) {
           uint8_t dcdc_cfg_ok[] = "DC/DC converters configured: 24V, 10A, Bus1toBus2\r\n";
           HAL_UART_Transmit(&huart1, dcdc_cfg_ok, sizeof(dcdc_cfg_ok)-1, 100);
+
+          /* AKTIVIRAJ CAN2 TX: Start oba pretvornika za testiranje */
+          if (DCDC_Start(0) && DCDC_Start(1)) {
+              uint8_t dcdc_start_ok[] = "DC/DC converters STARTED - CAN2 TX active!\r\n";
+              HAL_UART_Transmit(&huart1, dcdc_start_ok, sizeof(dcdc_start_ok)-1, 100);
+          } else {
+              uint8_t dcdc_start_fail[] = "WARNING: DC/DC start failed - CAN2 TX inactive!\r\n";
+              HAL_UART_Transmit(&huart1, dcdc_start_fail, sizeof(dcdc_start_fail)-1, 100);
+          }
       }
   } else {
       uint8_t dcdc_fail[] = "DC/DC controller initialization FAILED!\r\n";
