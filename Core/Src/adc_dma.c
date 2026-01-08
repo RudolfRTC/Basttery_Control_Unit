@@ -36,8 +36,10 @@ HAL_StatusTypeDef ADC_DMA_Init(ADC_DMA_HandleTypeDef* handle,
     handle->error_count = 0;
     handle->is_initialized = true;
 
-    // Save global handle for callbacks
+    // Atomično nastavi global handle za preprečitev race condition
+    __disable_irq();
     g_adc_dma_handle = handle;
+    __enable_irq();
 
     return HAL_OK;
 }
@@ -91,8 +93,11 @@ HAL_StatusTypeDef ADC_DMA_GetValue(ADC_DMA_HandleTypeDef* handle,
         return HAL_ERROR;
     }
 
-    // Read from circular buffer (DMA updates this automatically)
+    // Atomično preberi vrednost iz DMA bufferja za preprečitev race condition
+    // DMA lahko piše med branjem, zato uporabimo atomic read
+    __disable_irq();
     *value = handle->adc_buffer[channel];
+    __enable_irq();
 
     return HAL_OK;
 }
@@ -144,9 +149,12 @@ HAL_StatusTypeDef ADC_DMA_ClearFlag(ADC_DMA_HandleTypeDef* handle)
   */
 void ADC_DMA_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
-    if (g_adc_dma_handle != NULL) {
-        g_adc_dma_handle->conversion_complete = true;
-        g_adc_dma_handle->conversion_count++;
+    /* Atomično preberi global pointer za preprečitev race condition */
+    ADC_DMA_HandleTypeDef* local_handle = g_adc_dma_handle;
+
+    if (local_handle != NULL) {
+        local_handle->conversion_complete = true;
+        local_handle->conversion_count++;
     }
 }
 

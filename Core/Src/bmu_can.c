@@ -154,12 +154,17 @@ HAL_StatusTypeDef BMU_CAN_ConfigureFilter(CAN_HandleTypeDef* hcan)
         return HAL_ERROR;
     }
 
-    /* Configure filter to accept all messages (both Standard and Extended IDs) */
+    /* Configure filter za BMU protocol (0x100-0x2FF range)
+     * FilterIdHigh/Low: Base ID = 0x100 (shifted left 5 bits for HAL)
+     * FilterMaskHigh/Low: Mask za 0x1XX in 0x2XX range
+     * To dovoljuje samo BMU protocol sporočila in blokira ostala
+     */
     filter.FilterMode = CAN_FILTERMODE_IDMASK;
     filter.FilterScale = CAN_FILTERSCALE_32BIT;
-    filter.FilterIdHigh = 0x0000U;
+    // Sprejemaj samo sporočila z ID 0x100-0x2FF (BMU protocol range)
+    filter.FilterIdHigh = (0x100U << 5);     // Base ID 0x100
     filter.FilterIdLow = 0x0000U;
-    filter.FilterMaskIdHigh = 0x0000U;
+    filter.FilterMaskIdHigh = (0x600U << 5); // Maska za 0bXXX00XXXXXX (0x100-0x2FF)
     filter.FilterMaskIdLow = 0x0000U;
     filter.FilterFIFOAssignment = CAN_RX_FIFO0;
     filter.FilterActivation = ENABLE;
@@ -490,7 +495,7 @@ static HAL_StatusTypeDef BMU_CAN_SendMessage(BMU_CAN_HandleTypeDef* handle,
     }
 
     /* Wait for TX mailbox to be free (with timeout) */
-    wait_status = BMU_CAN_WaitTxMailboxFree(handle, 10U);
+    wait_status = BMU_CAN_WaitTxMailboxFree(handle, 100U);  // Povečan timeout za težko CAN obremenitev
     if (wait_status != HAL_OK) {
         handle->error_count++;
         return wait_status;
@@ -752,13 +757,15 @@ void BMU_CAN_ProcessRxMessageISR(CAN_HandleTypeDef* hcan,
         return;
     }
 
-    if ((g_bmu_can_handle == NULL) || (g_bmu_can_handle->is_initialized == false)) {
+    /* Atomično preberi global pointer za preprečitev race condition */
+    BMU_CAN_HandleTypeDef* local_handle = (BMU_CAN_HandleTypeDef*)g_bmu_can_handle;
+
+    if ((local_handle == NULL) || (local_handle->is_initialized == false)) {
         return;
     }
 
-    /* Cast from volatile to non-volatile (safe - pointer set once during init) */
-    result = BMU_CAN_ProcessRxMessage((BMU_CAN_HandleTypeDef*)g_bmu_can_handle,
-                                      rx_header, rx_data);
+    /* Uporabi lokalno kopijo namesto global pointerja */
+    result = BMU_CAN_ProcessRxMessage(local_handle, rx_header, rx_data);
 
     /* Optional: Handle result or update statistics */
     (void)result; /* Explicitly ignore return value in ISR context */

@@ -329,7 +329,11 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
         can_id = rx_header.ExtId;
     }
 
-    /* DEBUG: Print CAN RX message za diagnostiko */
+    /* DEBUG: Print CAN RX message za diagnostiko
+     * OPOZORILO: UART transmit v ISR kontekstu lahko povzroči zamude!
+     * Za produkcijo onemogočite z #undef CAN_ISR_DEBUG_OUTPUT
+     */
+#ifdef CAN_ISR_DEBUG_OUTPUT
     if (hcan == &hcan1) {
         (void)snprintf(debug_buf, sizeof(debug_buf),
             "[CAN1 RX] ID:0x%03lX DLC:%u Data:%02X %02X %02X %02X\r\n",
@@ -340,6 +344,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
             can_id, rx_header.DLC, rx_data[0], rx_data[1]);
     }
     (void)HAL_UART_Transmit(&huart1, (uint8_t*)debug_buf, (uint16_t)strlen(debug_buf), 10);
+#endif
 
     /* Route message to appropriate handler */
     if (hcan == &hcan1) {
