@@ -297,7 +297,7 @@ void CAN2_TX_IRQHandler(void)
   * @brief  CAN RX FIFO 0 message pending callback
   * @param  hcan: Pointer to CAN_HandleTypeDef structure
   * @retval None
-  * @note   MISRA C 2012 compliant implementation
+  * @note   Minimiziran za hitro izvajanje v ISR kontekstu
   */
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
@@ -305,10 +305,6 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
     uint8_t rx_data[8];
     uint32_t can_id;
     HAL_StatusTypeDef status;
-
-    /* Debug: UART diagnostika za CAN RX */
-    extern UART_HandleTypeDef huart1;
-    char debug_buf[80];
 
     /* MISRA C 2012 Rule 14.4: Explicit NULL check */
     if (hcan == NULL) {
@@ -328,23 +324,6 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
     } else {
         can_id = rx_header.ExtId;
     }
-
-    /* DEBUG: Print CAN RX message za diagnostiko
-     * OPOZORILO: UART transmit v ISR kontekstu lahko povzroči zamude!
-     * Za produkcijo onemogočite z #undef CAN_ISR_DEBUG_OUTPUT
-     */
-#ifdef CAN_ISR_DEBUG_OUTPUT
-    if (hcan == &hcan1) {
-        (void)snprintf(debug_buf, sizeof(debug_buf),
-            "[CAN1 RX] ID:0x%03lX DLC:%u Data:%02X %02X %02X %02X\r\n",
-            can_id, rx_header.DLC, rx_data[0], rx_data[1], rx_data[2], rx_data[3]);
-    } else {
-        (void)snprintf(debug_buf, sizeof(debug_buf),
-            "[CAN2 RX] ID:0x%08lX DLC:%u Data:%02X %02X\r\n",
-            can_id, rx_header.DLC, rx_data[0], rx_data[1]);
-    }
-    (void)HAL_UART_Transmit(&huart1, (uint8_t*)debug_buf, (uint16_t)strlen(debug_buf), 10);
-#endif
 
     /* Route message to appropriate handler */
     if (hcan == &hcan1) {
