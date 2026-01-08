@@ -22,6 +22,8 @@
 #include "stm32f4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "dcdc_controller.h"
+#include "dcdc_diagnostics.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -270,6 +272,40 @@ void CAN2_TX_IRQHandler(void)
   /* USER CODE BEGIN CAN2_TX_IRQn 1 */
 
   /* USER CODE END CAN2_TX_IRQn 1 */
+}
+
+/* USER CODE BEGIN 1 */
+
+/**
+  * @brief  CAN RX FIFO 0 message pending callback
+  * @param  hcan: Pointer to CAN_HandleTypeDef structure
+  * @retval None
+  */
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
+{
+    CAN_RxHeaderTypeDef rx_header;
+    uint8_t rx_data[8];
+    uint32_t can_id;
+
+    /* Get received message */
+    if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header, rx_data) != HAL_OK) {
+        return;
+    }
+
+    /* Extract CAN ID (standard or extended) */
+    can_id = (rx_header.IDE == CAN_ID_STD) ? rx_header.StdId : rx_header.ExtId;
+
+    if (hcan == &hcan1) {
+        /* CAN1 - Diagnostic interface (commands from external controller) */
+        DCDC_Diag_ProcessCommand(can_id, rx_data, rx_header.DLC);
+    }
+    else if (hcan == &hcan2) {
+        /* CAN2 - DC/DC converter feedback messages */
+        DCDC_ProcessCANMessage(can_id, rx_data, rx_header.DLC);
+    }
+    else {
+        /* Unknown CAN interface - ignore */
+    }
 }
 
 /* USER CODE END 1 */

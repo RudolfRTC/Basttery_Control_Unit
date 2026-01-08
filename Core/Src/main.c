@@ -31,6 +31,8 @@
 #include "bmu_can.h"
 #include "adc_dma.h"
 #include "can_diagnostics.h"
+#include "dcdc_controller.h"
+#include "dcdc_diagnostics.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -291,6 +293,37 @@ int main(void)
   /* inicializacija BTT6200 modulov */
   BTT6200_Config_Init(&hadc1);   // ali &hadc, isto kot si nastavil v config.c
   BTT6200_Init(&btt6200_modules[0]);
+
+  /* Inicializacija DC/DC kontrolerja (CAN2) */
+  uint8_t dcdc_msg[] = "\r\n=== DC/DC Converter Control ===\r\n";
+  HAL_UART_Transmit(&huart1, dcdc_msg, sizeof(dcdc_msg)-1, 100);
+
+  if (DCDC_Init()) {
+      uint8_t dcdc_ok[] = "DC/DC controller initialized OK\r\n";
+      HAL_UART_Transmit(&huart1, dcdc_ok, sizeof(dcdc_ok)-1, 100);
+
+      /* Konfiguriraj oba pretvornika: 24V, 10A, Bus1toBus2 */
+      DCDC_Config_t dcdc_config;
+      dcdc_config.converter_mode = DCDC_MODE_BUS1_TO_BUS2;
+      dcdc_config.control_type = DCDC_CTRL_TYPE_VBUS2_LIM;
+      dcdc_config.voltage_setpoint = DCDC_SETPOINT_24V;    /* 24.0V */
+      dcdc_config.current_limit = DCDC_CURRENT_LIMIT_10A;  /* 10.0A */
+      dcdc_config.start_command = DCDC_CMD_STOP;           /* Začni v STOP */
+
+      if (DCDC_Configure(0, &dcdc_config) && DCDC_Configure(1, &dcdc_config)) {
+          uint8_t dcdc_cfg_ok[] = "DC/DC converters configured: 24V, 10A, Bus1toBus2\r\n";
+          HAL_UART_Transmit(&huart1, dcdc_cfg_ok, sizeof(dcdc_cfg_ok)-1, 100);
+      }
+  } else {
+      uint8_t dcdc_fail[] = "DC/DC controller initialization FAILED!\r\n";
+      HAL_UART_Transmit(&huart1, dcdc_fail, sizeof(dcdc_fail)-1, 100);
+  }
+
+  /* Inicializacija DC/DC diagnostike (CAN1) */
+  if (DCDC_Diag_Init()) {
+      uint8_t diag_ok[] = "DC/DC diagnostics initialized OK (CAN1)\r\n";
+      HAL_UART_Transmit(&huart1, diag_ok, sizeof(diag_ok)-1, 100);
+  }
 
   uint8_t ready[] = "\r\n*** System Ready ***\r\n\r\n";
   HAL_UART_Transmit(&huart1, ready, sizeof(ready)-1, 100);
@@ -557,6 +590,13 @@ int main(void)
 	      uint8_t not_init[] = "[CAN] NOT INITIALIZED - skipping TX!\r\n";
 	      HAL_UART_Transmit(&huart1, not_init, sizeof(not_init)-1, 100);
 	  }
+
+	  // ========== DC/DC Periodic Tasks ==========
+	  /* CAN2: Pošiljaj control frame vsakih 20ms */
+	  DCDC_PeriodicTask();
+
+	  /* CAN1: Pošiljaj diagnostiko vsakih 100ms */
+	  DCDC_Diag_PeriodicTask();
 
 	  // ========== Main Loop Delay ==========
 	  HAL_Delay(1000);
