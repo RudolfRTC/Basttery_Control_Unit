@@ -13,27 +13,10 @@
 /* Private defines -----------------------------------------------------------*/
 #define BMU_HEARTBEAT_MAGIC_BYTE1  0xBEU
 #define BMU_HEARTBEAT_MAGIC_BYTE2  0xEFU
-#define CAN_RX_QUEUE_SIZE         32  // Circular buffer size
-
-/* Private types -------------------------------------------------------------*/
-typedef struct {
-    CAN_HandleTypeDef* hcan;
-    CAN_RxHeaderTypeDef header;
-    uint8_t data[8];
-    uint32_t timestamp;
-} CAN_RxMessage_t;
-
-typedef struct {
-    CAN_RxMessage_t buffer[CAN_RX_QUEUE_SIZE];
-    volatile uint32_t head;
-    volatile uint32_t tail;
-    volatile uint32_t overflow_count;
-} CAN_RxQueue_t;
 
 /* Private variables ---------------------------------------------------------*/
 /* MISRA C 2012 Rule 8.9 deviation: Global pointer for interrupt context access */
 static volatile BMU_CAN_HandleTypeDef* g_bmu_can_handle = NULL;
-static CAN_RxQueue_t g_can_rx_queue = {0};
 
 /* Private function prototypes -----------------------------------------------*/
 static HAL_StatusTypeDef BMU_CAN_SendMessage(BMU_CAN_HandleTypeDef* handle,
@@ -42,9 +25,6 @@ static HAL_StatusTypeDef BMU_CAN_SendMessage(BMU_CAN_HandleTypeDef* handle,
                                              uint8_t dlc);
 
 static HAL_StatusTypeDef BMU_CAN_PerformRecovery(CAN_HandleTypeDef* hcan);
-
-static bool CAN_RxQueue_Enqueue(CAN_HandleTypeDef* hcan, CAN_RxHeaderTypeDef* header, uint8_t* data);
-static bool CAN_RxQueue_Dequeue(CAN_RxMessage_t* msg);
 
 /* Public functions ----------------------------------------------------------*/
 
@@ -778,74 +758,6 @@ void BMU_CAN_RxCallback(CAN_HandleTypeDef* hcan)
 }
 
 /**
-  * @brief  Enqueue CAN message to RX queue (called from ISR)
-  */
-static bool CAN_RxQueue_Enqueue(CAN_HandleTypeDef* hcan, CAN_RxHeaderTypeDef* header, uint8_t* data)
-{
-    uint32_t next_head = (g_can_rx_queue.head + 1U) % CAN_RX_QUEUE_SIZE;
-
-    if (next_head == g_can_rx_queue.tail) {
-        g_can_rx_queue.overflow_count++;
-        return false;  // Queue full
-    }
-
-    g_can_rx_queue.buffer[g_can_rx_queue.head].hcan = hcan;
-    (void)memcpy(&g_can_rx_queue.buffer[g_can_rx_queue.head].header, header, sizeof(CAN_RxHeaderTypeDef));
-    (void)memcpy(g_can_rx_queue.buffer[g_can_rx_queue.head].data, data, 8);
-    g_can_rx_queue.buffer[g_can_rx_queue.head].timestamp = HAL_GetTick();
-
-    g_can_rx_queue.head = next_head;
-    return true;
-}
-
-/**
-  * @brief  Dequeue CAN message from RX queue (called from main loop)
-  */
-static bool CAN_RxQueue_Dequeue(CAN_RxMessage_t* msg)
-{
-    if (g_can_rx_queue.tail == g_can_rx_queue.head) {
-        return false;  // Queue empty
-    }
-
-    (void)memcpy(msg, &g_can_rx_queue.buffer[g_can_rx_queue.tail], sizeof(CAN_RxMessage_t));
-    g_can_rx_queue.tail = (g_can_rx_queue.tail + 1U) % CAN_RX_QUEUE_SIZE;
-    return true;
-}
-
-/**
-  * @brief  Process CAN RX queue (call from main loop)
-  */
-void BMU_CAN_ProcessQueue(void)
-{
-    CAN_RxMessage_t msg;
-    uint32_t can_id;
-    BMU_CAN_HandleTypeDef* local_handle = (BMU_CAN_HandleTypeDef*)g_bmu_can_handle;
-
-    if ((local_handle == NULL) || (local_handle->is_initialized == false)) {
-        return;
-    }
-
-    while (CAN_RxQueue_Dequeue(&msg)) {
-        /* Extract CAN ID */
-        if (msg.header.IDE == CAN_ID_STD) {
-            can_id = msg.header.StdId;
-        } else {
-            can_id = msg.header.ExtId;
-        }
-
-        /* Route message */
-        if (msg.hcan == local_handle->hcan1) {
-            DCDC_Diag_ProcessCommand(can_id, msg.data, msg.header.DLC);
-        } else if (msg.hcan == local_handle->hcan2) {
-            DCDC_ProcessCANMessage(can_id, msg.data, msg.header.DLC);
-        }
-
-        /* Process BMU protocol */
-        (void)BMU_CAN_ProcessRxMessage(local_handle, &msg.header, msg.data);
-    }
-}
-
-/**
   * @brief  Process already-read CAN message (for use in interrupt context)
   * @note   Call this from interrupt handler after reading the message
   * @param  hcan: Pointer na CAN_HandleTypeDef
@@ -857,6 +769,23 @@ void BMU_CAN_ProcessRxMessageISR(CAN_HandleTypeDef* hcan,
                                   CAN_RxHeaderTypeDef* rx_header,
                                   uint8_t* rx_data)
 {
-    /* Simply enqueue message for processing in main loop */
-    (void)CAN_RxQueue_Enqueue(hcan, rx_header, rx_data);
+    HAL_StatusTypeDef result;
+
+    /* MISRA C 2012 Rule 14.4: Explicit NULL and boolean checks */
+    if ((hcan == NULL) || (rx_header == NULL) || (rx_data == NULL)) {
+        return;
+    }
+
+    /* Atomično preberi global pointer za preprečitev race condition */
+    BMU_CAN_HandleTypeDef* local_handle = (BMU_CAN_HandleTypeDef*)g_bmu_can_handle;
+
+    if ((local_handle == NULL) || (local_handle->is_initialized == false)) {
+        return;
+    }
+
+    /* Uporabi lokalno kopijo namesto global pointerja */
+    result = BMU_CAN_ProcessRxMessage(local_handle, rx_header, rx_data);
+
+    /* Optional: Handle result or update statistics */
+    (void)result; /* Explicitly ignore return value in ISR context */
 }

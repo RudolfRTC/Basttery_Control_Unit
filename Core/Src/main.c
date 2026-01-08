@@ -490,9 +490,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  /* NAJVIŠJA PRIORITETA: Process CAN RX queue */
-	  BMU_CAN_ProcessQueue();
-
 	  uint32_t current_tick = HAL_GetTick();
 	  bool execute_slow_tasks = false;
 
