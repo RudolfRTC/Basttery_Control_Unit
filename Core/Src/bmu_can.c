@@ -614,7 +614,10 @@ HAL_StatusTypeDef BMU_CAN_ProcessRxMessage(BMU_CAN_HandleTypeDef* handle,
             }
 
             /* Set output state */
-            BTT6200_Config_SetOutput((BMU_Output_t)cmd_output.output_id, new_state);
+            if (BTT6200_Config_SetOutput((BMU_Output_t)cmd_output.output_id, new_state) != HAL_OK) {
+                handle->error_count++;
+                return HAL_ERROR;
+            }
             break;
 
         /* ========== BTT6200 Multi Command (0x201) ========== */
@@ -631,7 +634,10 @@ HAL_StatusTypeDef BMU_CAN_ProcessRxMessage(BMU_CAN_HandleTypeDef* handle,
             for (i = 0; i < BTT6200_NUM_OUTPUTS; i++) {
                 if ((cmd_multi.output_mask & (1UL << i)) != 0U) {
                     new_state = ((cmd_multi.output_states & (1UL << i)) != 0U);
-                    BTT6200_Config_SetOutput((BMU_Output_t)i, new_state);
+                    if (BTT6200_Config_SetOutput((BMU_Output_t)i, new_state) != HAL_OK) {
+                        handle->error_count++;
+                        /* Continue processing other outputs */
+                    }
                 }
             }
             break;
@@ -667,13 +673,19 @@ HAL_StatusTypeDef BMU_CAN_ProcessRxMessage(BMU_CAN_HandleTypeDef* handle,
 
                 case BMU_CMD_SYSTEM_DISABLE_ALL:
                     /* Disable all BTT6200 outputs */
-                    BTT6200_Config_DisableAll();
+                    if (BTT6200_Config_DisableAll() != HAL_OK) {
+                        handle->error_count++;
+                        return HAL_ERROR;
+                    }
                     break;
 
                 case BMU_CMD_SYSTEM_ENABLE_ALL:
                     /* Enable all BTT6200 outputs */
                     for (i = 0; i < BTT6200_NUM_OUTPUTS; i++) {
-                        BTT6200_Config_SetOutput((BMU_Output_t)i, true);
+                        if (BTT6200_Config_SetOutput((BMU_Output_t)i, true) != HAL_OK) {
+                            handle->error_count++;
+                            /* Continue enabling other outputs */
+                        }
                     }
                     break;
 
