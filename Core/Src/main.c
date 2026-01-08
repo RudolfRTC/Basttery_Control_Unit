@@ -244,7 +244,7 @@ int main(void)
   HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 
   /* TESTING MODE: Set to 1 to enable LOOPBACK mode (test without other CAN nodes) */
-  #if 1
+  #if 0
   // Switch CAN2 to LOOPBACK mode for solo testing without ACK errors
   uint8_t loopback_msg[] = "*** CAN2 LOOPBACK MODE ENABLED ***\r\n";
   HAL_UART_Transmit(&huart1, loopback_msg, sizeof(loopback_msg)-1, 100);

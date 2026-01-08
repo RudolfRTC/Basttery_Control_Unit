@@ -20,9 +20,12 @@ extern "C" {
 #include <stdbool.h>
 
 /* CAN1 Message IDs - Commands (RX) */
-#define DCDC_DIAG_CMD_CONV1         0x300U  /* Komanda za pretvornik 1 */
-#define DCDC_DIAG_CMD_CONV2         0x301U  /* Komanda za pretvornik 2 */
-#define DCDC_DIAG_CMD_BOTH          0x302U  /* Komanda za oba pretvornika */
+#define DCDC_DIAG_CMD_CONV1         0x300U  /* Komanda za pretvornik 1 (ON/OFF) */
+#define DCDC_DIAG_CMD_CONV2         0x301U  /* Komanda za pretvornik 2 (ON/OFF) */
+#define DCDC_DIAG_CMD_BOTH          0x302U  /* Komanda za oba pretvornika (ON/OFF) */
+#define DCDC_DIAG_CFG_CONV1         0x303U  /* Konfiguracijska komanda za pretvornik 1 */
+#define DCDC_DIAG_CFG_CONV2         0x304U  /* Konfiguracijska komanda za pretvornik 2 */
+#define DCDC_DIAG_CFG_BOTH          0x305U  /* Konfiguracijska komanda za oba */
 
 /* CAN1 Message IDs - Diagnostics (TX) */
 #define DCDC_DIAG_STATUS_CONV1      0x400U  /* Status pretvornika 1 */
@@ -48,6 +51,19 @@ typedef struct __attribute__((packed)) {
     uint8_t command;            /* 0=OFF, 1=ON */
     uint8_t reserved[7];        /* Rezervirano za prihodnost */
 } DCDC_Diag_Command_t;
+
+/**
+ * @brief Configuration message structure (RX on CAN1)
+ * DLC: 8 bytes
+ * Allows dynamic voltage setpoint and current limit adjustment
+ */
+typedef struct __attribute__((packed)) {
+    uint16_t voltage_setpoint;  /* Napetost v 0.1V (e.g., 240 = 24.0V) */
+    uint16_t current_limit;     /* Tok limit v 0.1A (e.g., 100 = 10.0A) */
+    uint8_t  control_type;      /* 7=vBus2Lim, 8=vBus1Lim */
+    uint8_t  converter_mode;    /* 0=Standby, 1=Bus1toBus2, 2=Bus2toBus1 */
+    uint16_t reserved;          /* Rezervirano */
+} DCDC_Diag_Config_t;
 
 /**
  * @brief Status diagnostic message (TX on CAN1)
