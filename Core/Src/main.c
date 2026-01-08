@@ -243,17 +243,21 @@ int main(void)
   (void)snprintf(uart_buf, sizeof(uart_buf), "CAN1 State before init: 0x%02X\r\n", hcan1.State);
   HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 
-  /* TESTING MODE: Set to 1 to enable SILENT mode (TX without ACK for solo testing) */
-  #if 0
-  // Switch to SILENT mode for testing without other CAN nodes
-  uint8_t silent_msg[] = "Switching CAN to SILENT mode (TX without ACK)...\r\n";
-  HAL_UART_Transmit(&huart1, silent_msg, sizeof(silent_msg)-1, 100);
+  /* TESTING MODE: Set to 1 to enable LOOPBACK mode (test without other CAN nodes) */
+  #if 1
+  // Switch CAN2 to LOOPBACK mode for solo testing without ACK errors
+  uint8_t loopback_msg[] = "*** CAN2 LOOPBACK MODE ENABLED ***\r\n";
+  HAL_UART_Transmit(&huart1, loopback_msg, sizeof(loopback_msg)-1, 100);
+  uint8_t loopback_info[] = "CAN2 will TX and RX its own messages (no external bus needed)\r\n";
+  HAL_UART_Transmit(&huart1, loopback_info, sizeof(loopback_info)-1, 100);
 
-  HAL_CAN_Stop(&hcan1);
-  hcan1.Init.Mode = CAN_MODE_SILENT;  // SILENT mode: TX without ACK
-  if (HAL_CAN_Init(&hcan1) != HAL_OK) {
-      uint8_t err[] = "Failed to switch to SILENT mode!\r\n";
+  hcan2.Init.Mode = CAN_MODE_LOOPBACK;  // LOOPBACK: TX -> RX internally
+  if (HAL_CAN_Init(&hcan2) != HAL_OK) {
+      uint8_t err[] = "Failed to switch CAN2 to LOOPBACK mode!\r\n";
       HAL_UART_Transmit(&huart1, err, sizeof(err)-1, 100);
+  } else {
+      uint8_t ok[] = "CAN2 LOOPBACK mode configured successfully\r\n";
+      HAL_UART_Transmit(&huart1, ok, sizeof(ok)-1, 100);
   }
   #endif
 
@@ -329,17 +333,45 @@ int main(void)
 
           if (test_status == HAL_OK) {
               (void)snprintf(uart_buf, sizeof(uart_buf),
-                  "✓ CAN2 TEST TX SUCCESS! ExtID:0x%08lX Mailbox:%lu\r\n",
+                  "✓ CAN2 AddTxMessage OK! ExtID:0x%08lX Mailbox:%lu\r\n",
                   test_header.ExtId, test_mailbox);
               HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+
+              /* Wait for TX to complete and check result */
+              HAL_Delay(100);  /* Give time for TX to complete */
+
+              can2_error = HAL_CAN_GetError(&hcan2);
+              (void)snprintf(uart_buf, sizeof(uart_buf), "CAN2 Error after TX attempt: 0x%08lX\r\n", can2_error);
+              HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+
+              /* Decode CAN2 error codes */
+              if (can2_error == 0x00000000UL) {
+                  uint8_t ok[] = "✓ NO ERRORS - CAN2 TX successful!\r\n";
+                  HAL_UART_Transmit(&huart1, ok, sizeof(ok)-1, 100);
+              } else {
+                  if ((can2_error & 0x00000004UL) != 0UL) {  /* HAL_CAN_ERROR_ACK */
+                      uint8_t ack_err[] = "✗ ACK ERROR - No device on bus acknowledged message!\r\n";
+                      HAL_UART_Transmit(&huart1, ack_err, sizeof(ack_err)-1, 100);
+                      uint8_t ack_fix[] = "  FIX: Connect another CAN device OR enable LOOPBACK mode\r\n";
+                      HAL_UART_Transmit(&huart1, ack_fix, sizeof(ack_fix)-1, 100);
+                  }
+                  if ((can2_error & 0x00000010UL) != 0UL) {  /* HAL_CAN_ERROR_BOF */
+                      uint8_t bof_err[] = "✗ BUS-OFF - Too many errors, CAN2 disabled!\r\n";
+                      HAL_UART_Transmit(&huart1, bof_err, sizeof(bof_err)-1, 100);
+                  }
+                  if ((can2_error & 0x00000001UL) != 0UL) {  /* HAL_CAN_ERROR_EWG */
+                      uint8_t ewg_err[] = "⚠ ERROR WARNING - Error count high\r\n";
+                      HAL_UART_Transmit(&huart1, ewg_err, sizeof(ewg_err)-1, 100);
+                  }
+              }
           } else {
               (void)snprintf(uart_buf, sizeof(uart_buf),
-                  "✗ CAN2 TEST TX FAILED! Status:%d\r\n", test_status);
+                  "✗ CAN2 AddTxMessage FAILED! Status:%d\r\n", test_status);
               HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 
               /* Print detailed error */
               can2_error = HAL_CAN_GetError(&hcan2);
-              (void)snprintf(uart_buf, sizeof(uart_buf), "CAN2 Error after TX: 0x%08lX\r\n", can2_error);
+              (void)snprintf(uart_buf, sizeof(uart_buf), "CAN2 Error code: 0x%08lX\r\n", can2_error);
               HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
           }
 

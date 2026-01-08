@@ -132,6 +132,7 @@ HAL_StatusTypeDef BMU_CAN_Configure500k(CAN_HandleTypeDef* hcan)
 /**
   * @brief  Nastavi CAN filter (accept all messages)
   * @note   CAN1 uporablja FilterBank 0, CAN2 uporablja FilterBank 14
+  *         KRITIČNO: SlaveStartFilterBank se nastavi SAMO za CAN1!
   */
 HAL_StatusTypeDef BMU_CAN_ConfigureFilter(CAN_HandleTypeDef* hcan)
 {
@@ -145,13 +146,15 @@ HAL_StatusTypeDef BMU_CAN_ConfigureFilter(CAN_HandleTypeDef* hcan)
     /* Determine FilterBank based on CAN instance */
     if (hcan->Instance == CAN1) {
         filter.FilterBank = 0U;  /* CAN1 uses banks 0-13 */
+        filter.SlaveStartFilterBank = 14U;  /* CAN2 starts at bank 14 - ONLY for CAN1! */
     } else if (hcan->Instance == CAN2) {
         filter.FilterBank = 14U;  /* CAN2 uses banks 14-27 */
+        filter.SlaveStartFilterBank = 14U;  /* Keep same value, but ignored for CAN2 */
     } else {
         return HAL_ERROR;
     }
 
-    /* Configure filter to accept all messages */
+    /* Configure filter to accept all messages (both Standard and Extended IDs) */
     filter.FilterMode = CAN_FILTERMODE_IDMASK;
     filter.FilterScale = CAN_FILTERSCALE_32BIT;
     filter.FilterIdHigh = 0x0000U;
@@ -160,7 +163,6 @@ HAL_StatusTypeDef BMU_CAN_ConfigureFilter(CAN_HandleTypeDef* hcan)
     filter.FilterMaskIdLow = 0x0000U;
     filter.FilterFIFOAssignment = CAN_RX_FIFO0;
     filter.FilterActivation = ENABLE;
-    filter.SlaveStartFilterBank = 14U;  /* CAN2 start filter bank */
 
     if (HAL_CAN_ConfigFilter(hcan, &filter) != HAL_OK) {
         return HAL_ERROR;
