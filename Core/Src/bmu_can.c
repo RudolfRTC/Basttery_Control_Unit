@@ -135,30 +135,32 @@ HAL_StatusTypeDef BMU_CAN_Configure500k(CAN_HandleTypeDef* hcan)
   */
 HAL_StatusTypeDef BMU_CAN_ConfigureFilter(CAN_HandleTypeDef* hcan)
 {
+    CAN_FilterTypeDef filter;
+
+    /* MISRA C 2012 Rule 14.4: Explicit NULL check */
     if (hcan == NULL) {
         return HAL_ERROR;
     }
 
-    CAN_FilterTypeDef filter;
-
-    // Določi FilterBank glede na CAN instance
+    /* Determine FilterBank based on CAN instance */
     if (hcan->Instance == CAN1) {
-        filter.FilterBank = 0;  // CAN1 uporablja banke 0-13
+        filter.FilterBank = 0U;  /* CAN1 uses banks 0-13 */
     } else if (hcan->Instance == CAN2) {
-        filter.FilterBank = 14;  // CAN2 uporablja banke 14-27
+        filter.FilterBank = 14U;  /* CAN2 uses banks 14-27 */
     } else {
         return HAL_ERROR;
     }
 
+    /* Configure filter to accept all messages */
     filter.FilterMode = CAN_FILTERMODE_IDMASK;
     filter.FilterScale = CAN_FILTERSCALE_32BIT;
-    filter.FilterIdHigh = 0x0000;
-    filter.FilterIdLow = 0x0000;
-    filter.FilterMaskIdHigh = 0x0000;
-    filter.FilterMaskIdLow = 0x0000;
+    filter.FilterIdHigh = 0x0000U;
+    filter.FilterIdLow = 0x0000U;
+    filter.FilterMaskIdHigh = 0x0000U;
+    filter.FilterMaskIdLow = 0x0000U;
     filter.FilterFIFOAssignment = CAN_RX_FIFO0;
     filter.FilterActivation = ENABLE;
-    filter.SlaveStartFilterBank = 14;  // CAN2 start filter bank
+    filter.SlaveStartFilterBank = 14U;  /* CAN2 start filter bank */
 
     if (HAL_CAN_ConfigFilter(hcan, &filter) != HAL_OK) {
         return HAL_ERROR;
@@ -368,17 +370,18 @@ HAL_StatusTypeDef BMU_CAN_SendBTTDetailed(BMU_CAN_HandleTypeDef* handle,
   */
 static HAL_StatusTypeDef BMU_CAN_PerformRecovery(CAN_HandleTypeDef* hcan)
 {
+    /* MISRA C 2012 Rule 14.4: Explicit NULL check */
     if (hcan == NULL) {
         return HAL_ERROR;
     }
 
-    HAL_CAN_Stop(hcan);
-    HAL_CAN_ResetError(hcan);
-    HAL_Delay(10);
+    (void)HAL_CAN_Stop(hcan);
+    (void)HAL_CAN_ResetError(hcan);
+    HAL_Delay(10U);
 
-    if (BMU_CAN_ConfigureFilter(hcan) != HAL_OK ||
-        HAL_CAN_Start(hcan) != HAL_OK ||
-        HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
+    if ((BMU_CAN_ConfigureFilter(hcan) != HAL_OK) ||
+        (HAL_CAN_Start(hcan) != HAL_OK) ||
+        (HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)) {
         return HAL_ERROR;
     }
 
@@ -391,18 +394,28 @@ static HAL_StatusTypeDef BMU_CAN_PerformRecovery(CAN_HandleTypeDef* hcan)
   */
 HAL_StatusTypeDef BMU_CAN_WaitTxMailboxFree(BMU_CAN_HandleTypeDef* handle, uint32_t timeout_ms)
 {
+    uint32_t start_tick;
+    bool mailbox_free;
+
     /* MISRA C 2012 Rule 14.4: Explicit boolean check */
     if ((handle == NULL) || (handle->is_initialized == false)) {
         return HAL_ERROR;
     }
 
-    uint32_t start_tick = HAL_GetTick();
+    start_tick = HAL_GetTick();
+    mailbox_free = false;
 
-    // Wait until at least one TX mailbox is free
-    while (HAL_CAN_GetTxMailboxesFreeLevel(handle->hcan1) == 0U) {
+    /* Wait until at least one TX mailbox is free */
+    while (mailbox_free == false) {
+        if (HAL_CAN_GetTxMailboxesFreeLevel(handle->hcan1) != 0U) {
+            mailbox_free = true;
+            break;
+        }
+
         if ((HAL_CAN_GetError(handle->hcan1) & HAL_CAN_ERROR_BOF) != 0U) {
             return BMU_CAN_PerformRecovery(handle->hcan1);
         }
+
         if ((HAL_GetTick() - start_tick) > timeout_ms) {
             return HAL_TIMEOUT;
         }
@@ -416,27 +429,30 @@ HAL_StatusTypeDef BMU_CAN_WaitTxMailboxFree(BMU_CAN_HandleTypeDef* handle, uint3
   */
 HAL_StatusTypeDef BMU_CAN_CheckAndRecover(BMU_CAN_HandleTypeDef* handle)
 {
+    uint32_t can_error;
+    HAL_CAN_StateTypeDef can_state;
+
     /* MISRA C 2012 Rule 14.4: Explicit boolean check */
     if ((handle == NULL) || (handle->is_initialized == false)) {
         return HAL_ERROR;
     }
 
-    uint32_t can_error = HAL_CAN_GetError(handle->hcan1);
-    HAL_CAN_StateTypeDef can_state = HAL_CAN_GetState(handle->hcan1);
+    can_error = HAL_CAN_GetError(handle->hcan1);
+    can_state = HAL_CAN_GetState(handle->hcan1);
 
-    // BUS-OFF, ERROR, or RESET state - full recovery needed
+    /* BUS-OFF, ERROR, or RESET state - full recovery needed */
     if (((can_error & HAL_CAN_ERROR_BOF) != 0U) ||
         (can_state == HAL_CAN_STATE_RESET) ||
         (can_state == HAL_CAN_STATE_ERROR)) {
         return BMU_CAN_PerformRecovery(handle->hcan1);
     }
 
-    // ERROR-PASSIVE or WARNING - just reset errors
+    /* ERROR-PASSIVE or WARNING - just reset errors */
     if ((can_error & (HAL_CAN_ERROR_EPV | HAL_CAN_ERROR_EWG)) != 0U) {
         (void)HAL_CAN_ResetError(handle->hcan1);
     }
 
-    // INRQ set - CAN stuck in init mode
+    /* INRQ set - CAN stuck in init mode */
     if ((handle->hcan1->Instance->MCR & CAN_MCR_INRQ) != 0U) {
         if ((HAL_CAN_Start(handle->hcan1) != HAL_OK) ||
             (HAL_CAN_ActivateNotification(handle->hcan1, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)) {
@@ -455,50 +471,59 @@ static HAL_StatusTypeDef BMU_CAN_SendMessage(BMU_CAN_HandleTypeDef* handle,
                                              uint8_t* data,
                                              uint8_t dlc)
 {
-    if (handle == NULL || data == NULL) {
+    HAL_StatusTypeDef wait_status;
+    HAL_StatusTypeDef status;
+    uint8_t dlc_safe;
+
+    /* MISRA C 2012 Rule 14.4: Explicit NULL checks */
+    if ((handle == NULL) || (data == NULL)) {
         return HAL_ERROR;
     }
 
-    // Ensure DLC is valid (0-8)
-    if (dlc > 8) {
-        dlc = 8;
+    /* Ensure DLC is valid (0-8) */
+    if (dlc > 8U) {
+        dlc_safe = 8U;
+    } else {
+        dlc_safe = dlc;
     }
 
-    // Wait for TX mailbox to be free (with timeout)
-    HAL_StatusTypeDef wait_status = BMU_CAN_WaitTxMailboxFree(handle, 10);
+    /* Wait for TX mailbox to be free (with timeout) */
+    wait_status = BMU_CAN_WaitTxMailboxFree(handle, 10U);
     if (wait_status != HAL_OK) {
         handle->error_count++;
         return wait_status;
     }
 
-    // Configure TX header
+    /* Configure TX header */
     handle->tx_header.StdId = msg_id;
-    handle->tx_header.IDE = CAN_ID_STD;  // Standard 11-bit ID
+    handle->tx_header.IDE = CAN_ID_STD;  /* Standard 11-bit ID */
     handle->tx_header.RTR = CAN_RTR_DATA;
-    handle->tx_header.DLC = dlc;
+    handle->tx_header.DLC = dlc_safe;
     handle->tx_header.TransmitGlobalTime = DISABLE;
 
-    // Copy data to TX buffer
-    memcpy(handle->tx_data, data, dlc);
+    /* Copy data to TX buffer */
+    (void)memcpy(handle->tx_data, data, dlc_safe);
 
-    // Send message
-    HAL_StatusTypeDef status = HAL_CAN_AddTxMessage(handle->hcan1,
-                                                    &handle->tx_header,
-                                                    handle->tx_data,
-                                                    &handle->tx_mailbox);
+    /* Send message */
+    status = HAL_CAN_AddTxMessage(handle->hcan1,
+                                  &handle->tx_header,
+                                  handle->tx_data,
+                                  &handle->tx_mailbox);
 
     if (status == HAL_OK) {
         handle->tx_count++;
     } else {
         handle->error_count++;
 
-        // DEBUG: Print TX failure (only failures to reduce UART load)
+        /* DEBUG: Print TX failure (only failures to reduce UART load) */
         #if 1
-        extern UART_HandleTypeDef huart1;
-        char debug_buf[80];
-        (void)snprintf(debug_buf, sizeof(debug_buf), "[TX ERR] 0x%03lX (Errors:%lu)\r\n",
-                      msg_id, handle->error_count);
-        HAL_UART_Transmit(&huart1, (uint8_t*)debug_buf, strlen(debug_buf), 10);
+        {
+            extern UART_HandleTypeDef huart1;
+            char debug_buf[80];
+            (void)snprintf(debug_buf, sizeof(debug_buf), "[TX ERR] 0x%03lX (Errors:%lu)\r\n",
+                          msg_id, handle->error_count);
+            (void)HAL_UART_Transmit(&huart1, (uint8_t*)debug_buf, (uint16_t)strlen(debug_buf), 10);
+        }
         #endif
     }
 
@@ -512,125 +537,134 @@ HAL_StatusTypeDef BMU_CAN_ProcessRxMessage(BMU_CAN_HandleTypeDef* handle,
                                            CAN_RxHeaderTypeDef* rx_header,
                                            uint8_t* rx_data)
 {
-    if (handle == NULL || rx_header == NULL || rx_data == NULL) {
+    uint32_t can_id;
+    bool new_state;
+    BMU_BTT6200_OutputCmd_t cmd_output;
+    BMU_BTT6200_MultiCmd_t cmd_multi;
+    BMU_SystemCmd_t cmd_system;
+    BTT6200_Status_t current_status;
+    uint8_t i;
+
+    /* MISRA C 2012 Rule 14.4: Explicit NULL checks */
+    if ((handle == NULL) || (rx_header == NULL) || (rx_data == NULL)) {
         return HAL_ERROR;
     }
 
-    // Increment RX counter
+    /* Extract CAN ID (standard or extended) */
+    if (rx_header->IDE == CAN_ID_STD) {
+        can_id = rx_header->StdId;
+    } else {
+        can_id = rx_header->ExtId;
+    }
+
+    /* Increment RX counter */
     handle->rx_count++;
 
-    // Process based on message ID
-    switch (rx_header->StdId) {
+    /* Process based on message ID */
+    switch (can_id) {
 
-        // ========== BTT6200 Output Command (0x200) ==========
-        case CAN_ID_BTT6200_OUTPUT_CMD: {
-            if (rx_header->DLC < sizeof(BMU_BTT6200_OutputCmd_t)) {
+        /* ========== BTT6200 Output Command (0x200) ========== */
+        case CAN_ID_BTT6200_OUTPUT_CMD:
+            if (rx_header->DLC < (uint8_t)sizeof(BMU_BTT6200_OutputCmd_t)) {
                 handle->error_count++;
                 return HAL_ERROR;
             }
 
             /* MISRA C 2012 Rule 11.5: Use memcpy to avoid unaligned access */
-            BMU_BTT6200_OutputCmd_t cmd;
-            (void)memcpy(&cmd, rx_data, sizeof(cmd));
+            (void)memcpy(&cmd_output, rx_data, sizeof(cmd_output));
 
-            // Verify magic number for safety
-            if (cmd.magic != BMU_MAGIC_OUTPUT_CMD) {
+            /* Verify magic number for safety */
+            if (cmd_output.magic != BMU_MAGIC_OUTPUT_CMD) {
                 handle->error_count++;
                 return HAL_ERROR;
             }
 
-            // Validate output ID
-            if (cmd.output_id >= BTT6200_NUM_OUTPUTS) {
+            /* Validate output ID */
+            if (cmd_output.output_id >= BTT6200_NUM_OUTPUTS) {
                 handle->error_count++;
                 return HAL_ERROR;
             }
 
-            // Execute command
-            bool new_state;
-            if (cmd.command == BMU_CMD_OUTPUT_OFF) {
+            /* Execute command */
+            if (cmd_output.command == BMU_CMD_OUTPUT_OFF) {
                 new_state = false;
-            } else if (cmd.command == BMU_CMD_OUTPUT_ON) {
+            } else if (cmd_output.command == BMU_CMD_OUTPUT_ON) {
                 new_state = true;
-            } else if (cmd.command == BMU_CMD_OUTPUT_TOGGLE) {
-                // Read current state and toggle
-                // STATUS_OK means enabled, STATUS_DISABLED means disabled
-                BTT6200_Status_t current_status = BTT6200_Config_GetStatus(cmd.output_id);
+            } else if (cmd_output.command == BMU_CMD_OUTPUT_TOGGLE) {
+                /* Read current state and toggle */
+                current_status = BTT6200_Config_GetStatus(cmd_output.output_id);
                 new_state = (current_status == BTT6200_STATUS_DISABLED);
             } else {
                 handle->error_count++;
                 return HAL_ERROR;
             }
 
-            // Set output state
-            BTT6200_Config_SetOutput((BMU_Output_t)cmd.output_id, new_state);
+            /* Set output state */
+            BTT6200_Config_SetOutput((BMU_Output_t)cmd_output.output_id, new_state);
             break;
-        }
 
-        // ========== BTT6200 Multi Command (0x201) ==========
-        case CAN_ID_BTT6200_MULTI_CMD: {
-            if (rx_header->DLC < sizeof(BMU_BTT6200_MultiCmd_t)) {
+        /* ========== BTT6200 Multi Command (0x201) ========== */
+        case CAN_ID_BTT6200_MULTI_CMD:
+            if (rx_header->DLC < (uint8_t)sizeof(BMU_BTT6200_MultiCmd_t)) {
                 handle->error_count++;
                 return HAL_ERROR;
             }
 
             /* MISRA C 2012 Rule 11.5: Use memcpy to avoid unaligned access */
-            BMU_BTT6200_MultiCmd_t cmd;
-            (void)memcpy(&cmd, rx_data, sizeof(cmd));
+            (void)memcpy(&cmd_multi, rx_data, sizeof(cmd_multi));
 
-            // Process each output in mask
-            for (uint8_t i = 0; i < BTT6200_NUM_OUTPUTS; i++) {
-                if ((cmd.output_mask & (1UL << i)) != 0U) {
-                    bool state = ((cmd.output_states & (1UL << i)) != 0U);
-                    BTT6200_Config_SetOutput((BMU_Output_t)i, state);
+            /* Process each output in mask */
+            for (i = 0; i < BTT6200_NUM_OUTPUTS; i++) {
+                if ((cmd_multi.output_mask & (1UL << i)) != 0U) {
+                    new_state = ((cmd_multi.output_states & (1UL << i)) != 0U);
+                    BTT6200_Config_SetOutput((BMU_Output_t)i, new_state);
                 }
             }
             break;
-        }
 
-        // ========== System Command (0x202) ==========
-        case CAN_ID_SYSTEM_CMD: {
-            if (rx_header->DLC < sizeof(BMU_SystemCmd_t)) {
+        /* ========== System Command (0x202) ========== */
+        case CAN_ID_SYSTEM_CMD:
+            if (rx_header->DLC < (uint8_t)sizeof(BMU_SystemCmd_t)) {
                 handle->error_count++;
                 return HAL_ERROR;
             }
 
             /* MISRA C 2012 Rule 11.5: Use memcpy to avoid unaligned access */
-            BMU_SystemCmd_t cmd;
-            (void)memcpy(&cmd, rx_data, sizeof(cmd));
+            (void)memcpy(&cmd_system, rx_data, sizeof(cmd_system));
 
-            // Verify magic number for safety
-            if (cmd.magic != BMU_MAGIC_SYSTEM_CMD) {
+            /* Verify magic number for safety */
+            if (cmd_system.magic != BMU_MAGIC_SYSTEM_CMD) {
                 handle->error_count++;
                 return HAL_ERROR;
             }
 
-            // Execute system command
-            switch (cmd.command) {
+            /* Execute system command */
+            switch (cmd_system.command) {
                 case BMU_CMD_SYSTEM_NOP:
-                    // Do nothing
+                    /* Do nothing */
                     break;
 
                 case BMU_CMD_SYSTEM_RESET_STATS:
-                    // Reset CAN statistics
-                    handle->tx_count = 0;
-                    handle->rx_count = 0;
-                    handle->error_count = 0;
+                    /* Reset CAN statistics */
+                    handle->tx_count = 0U;
+                    handle->rx_count = 0U;
+                    handle->error_count = 0U;
                     break;
 
                 case BMU_CMD_SYSTEM_DISABLE_ALL:
-                    // Disable all BTT6200 outputs
+                    /* Disable all BTT6200 outputs */
                     BTT6200_Config_DisableAll();
                     break;
 
                 case BMU_CMD_SYSTEM_ENABLE_ALL:
-                    // Enable all BTT6200 outputs
-                    for (uint8_t i = 0; i < BTT6200_NUM_OUTPUTS; i++) {
+                    /* Enable all BTT6200 outputs */
+                    for (i = 0; i < BTT6200_NUM_OUTPUTS; i++) {
                         BTT6200_Config_SetOutput((BMU_Output_t)i, true);
                     }
                     break;
 
                 case BMU_CMD_SYSTEM_REBOOT:
-                    // Software reset
+                    /* Software reset */
                     NVIC_SystemReset();
                     break;
 
@@ -639,12 +673,12 @@ HAL_StatusTypeDef BMU_CAN_ProcessRxMessage(BMU_CAN_HandleTypeDef* handle,
                     return HAL_ERROR;
             }
             break;
-        }
 
         default:
-            // Unknown message ID
-            handle->error_count++;
-            return HAL_ERROR;
+            /* Unknown message ID - not a BMU protocol message */
+            /* This is acceptable - might be DCDC or other protocol */
+            /* Do not increment error_count for unknown IDs */
+            break;
     }
 
     return HAL_OK;
