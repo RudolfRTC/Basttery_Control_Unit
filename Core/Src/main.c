@@ -261,6 +261,92 @@ int main(void)
       uint8_t can_ok[] = "CAN bus initialized OK (500 kbps)\r\n";
       HAL_UART_Transmit(&huart1, can_ok, sizeof(can_ok)-1, 100);
 
+      /* TEST CAN1 TX: Standard ID test */
+      {
+          CAN_TxHeaderTypeDef test_header;
+          uint8_t test_data[8] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88};
+          uint32_t test_mailbox;
+          HAL_StatusTypeDef test_status;
+
+          uint8_t test_msg[] = "\r\n>>> CAN1 TEST TX START <<<\r\n";
+          HAL_UART_Transmit(&huart1, test_msg, sizeof(test_msg)-1, 100);
+
+          /* Standard ID test message */
+          test_header.StdId = 0x123;  /* Test Standard ID */
+          test_header.IDE = CAN_ID_STD;
+          test_header.RTR = CAN_RTR_DATA;
+          test_header.DLC = 8;
+          test_header.TransmitGlobalTime = DISABLE;
+
+          test_status = HAL_CAN_AddTxMessage(&hcan1, &test_header, test_data, &test_mailbox);
+
+          if (test_status == HAL_OK) {
+              (void)snprintf(uart_buf, sizeof(uart_buf),
+                  "✓ CAN1 TEST TX SUCCESS! StdID:0x%03lX Mailbox:%lu\r\n",
+                  test_header.StdId, test_mailbox);
+              HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+          } else {
+              (void)snprintf(uart_buf, sizeof(uart_buf),
+                  "✗ CAN1 TEST TX FAILED! Status:%d\r\n", test_status);
+              HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+          }
+
+          uint8_t test_end[] = ">>> CAN1 TEST TX END <<<\r\n\r\n";
+          HAL_UART_Transmit(&huart1, test_end, sizeof(test_end)-1, 100);
+      }
+
+      /* TEST CAN2 TX: Extended ID test */
+      {
+          CAN_TxHeaderTypeDef test_header;
+          uint8_t test_data[8] = {0xAA, 0xBB, 0xCC, 0xDD, 0x11, 0x22, 0x33, 0x44};
+          uint32_t test_mailbox;
+          HAL_StatusTypeDef test_status;
+
+          uint8_t test_msg[] = ">>> CAN2 TEST TX START <<<\r\n";
+          HAL_UART_Transmit(&huart1, test_msg, sizeof(test_msg)-1, 100);
+
+          /* Extended ID test message */
+          test_header.ExtId = 0x18FF5500;  /* Test Extended ID */
+          test_header.IDE = CAN_ID_EXT;
+          test_header.RTR = CAN_RTR_DATA;
+          test_header.DLC = 8;
+          test_header.TransmitGlobalTime = DISABLE;
+
+          /* Check CAN2 state before sending */
+          (void)snprintf(uart_buf, sizeof(uart_buf), "CAN2 State: 0x%02X\r\n", hcan2.State);
+          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+
+          uint32_t can2_error = HAL_CAN_GetError(&hcan2);
+          (void)snprintf(uart_buf, sizeof(uart_buf), "CAN2 Error: 0x%08lX\r\n", can2_error);
+          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+
+          uint32_t free_boxes = HAL_CAN_GetTxMailboxesFreeLevel(&hcan2);
+          (void)snprintf(uart_buf, sizeof(uart_buf), "CAN2 Free TX Mailboxes: %lu\r\n", free_boxes);
+          HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+
+          /* Send test message on CAN2 */
+          test_status = HAL_CAN_AddTxMessage(&hcan2, &test_header, test_data, &test_mailbox);
+
+          if (test_status == HAL_OK) {
+              (void)snprintf(uart_buf, sizeof(uart_buf),
+                  "✓ CAN2 TEST TX SUCCESS! ExtID:0x%08lX Mailbox:%lu\r\n",
+                  test_header.ExtId, test_mailbox);
+              HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+          } else {
+              (void)snprintf(uart_buf, sizeof(uart_buf),
+                  "✗ CAN2 TEST TX FAILED! Status:%d\r\n", test_status);
+              HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+
+              /* Print detailed error */
+              can2_error = HAL_CAN_GetError(&hcan2);
+              (void)snprintf(uart_buf, sizeof(uart_buf), "CAN2 Error after TX: 0x%08lX\r\n", can2_error);
+              HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
+          }
+
+          uint8_t test_end[] = ">>> CAN2 TEST TX END <<<\r\n\r\n";
+          HAL_UART_Transmit(&huart1, test_end, sizeof(test_end)-1, 100);
+      }
+
       // Debug: Preveri CAN1 error code
       uint32_t can_error = HAL_CAN_GetError(&hcan1);
       (void)snprintf(uart_buf, sizeof(uart_buf), "CAN1 Error Code: 0x%08lX\r\n", can_error);
