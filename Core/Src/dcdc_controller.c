@@ -9,7 +9,7 @@
 #include <string.h>
 
 /* External CAN handle - must be defined in main.c */
-extern CAN_HandleTypeDef hcan1;
+extern CAN_HandleTypeDef hcan2;
 
 /* Private structures */
 
@@ -393,7 +393,7 @@ static bool DCDC_TransmitCANMessage(uint32_t can_id, const uint8_t *data, uint8_
     /* Wait for free TX mailbox (10ms timeout) */
     timeout_start = HAL_GetTick();
     do {
-        free_level = HAL_CAN_GetTxMailboxesFreeLevel(&hcan1);
+        free_level = HAL_CAN_GetTxMailboxesFreeLevel(&hcan2);
         if (free_level > 0U) {
             break;
         }
@@ -413,7 +413,7 @@ static bool DCDC_TransmitCANMessage(uint32_t can_id, const uint8_t *data, uint8_
     (void)memcpy(tx_data, data, dlc);
 
     /* Add message to TX mailbox */
-    status = HAL_CAN_AddTxMessage(&hcan1, &tx_header, tx_data, &tx_mailbox);
+    status = HAL_CAN_AddTxMessage(&hcan2, &tx_header, tx_data, &tx_mailbox);
 
     return (status == HAL_OK);
 }
