@@ -147,27 +147,34 @@ HAL_StatusTypeDef BMU_CAN_ConfigureFilter(CAN_HandleTypeDef* hcan)
     if (hcan->Instance == CAN1) {
         filter.FilterBank = 0U;  /* CAN1 uses banks 0-13 */
         filter.SlaveStartFilterBank = 14U;  /* CAN2 starts at bank 14 - ONLY for CAN1! */
+
+        /* CAN1: Sprejmi VSA sporočila (BMU protokol) */
+        filter.FilterMode = CAN_FILTERMODE_IDMASK;
+        filter.FilterScale = CAN_FILTERSCALE_32BIT;
+        filter.FilterIdHigh = 0x0000U;
+        filter.FilterIdLow = 0x0000U;
+        filter.FilterMaskIdHigh = 0x0000U;  // Maska 0 = sprejmi vse
+        filter.FilterMaskIdLow = 0x0000U;   // Maska 0 = sprejmi vse
+        filter.FilterFIFOAssignment = CAN_RX_FIFO0;
+        filter.FilterActivation = ENABLE;
+
     } else if (hcan->Instance == CAN2) {
         filter.FilterBank = 14U;  /* CAN2 uses banks 14-27 */
         filter.SlaveStartFilterBank = 14U;  /* Keep same value, but ignored for CAN2 */
+
+        /* CAN2: Sprejmi VSA sporočila (Standard in Extended ID za DCDC) */
+        filter.FilterMode = CAN_FILTERMODE_IDMASK;
+        filter.FilterScale = CAN_FILTERSCALE_32BIT;
+        filter.FilterIdHigh = 0x0000U;
+        filter.FilterIdLow = 0x0000U;
+        filter.FilterMaskIdHigh = 0x0000U;  // Maska 0 = sprejmi vse
+        filter.FilterMaskIdLow = 0x0000U;   // Maska 0 = sprejmi vse
+        filter.FilterFIFOAssignment = CAN_RX_FIFO0;
+        filter.FilterActivation = ENABLE;
+
     } else {
         return HAL_ERROR;
     }
-
-    /* Configure filter za BMU protocol (0x100-0x2FF range)
-     * FilterIdHigh/Low: Base ID = 0x100 (shifted left 5 bits for HAL)
-     * FilterMaskHigh/Low: Mask za 0x1XX in 0x2XX range
-     * To dovoljuje samo BMU protocol sporočila in blokira ostala
-     */
-    filter.FilterMode = CAN_FILTERMODE_IDMASK;
-    filter.FilterScale = CAN_FILTERSCALE_32BIT;
-    // Sprejemaj samo sporočila z ID 0x100-0x2FF (BMU protocol range)
-    filter.FilterIdHigh = (0x100U << 5);     // Base ID 0x100
-    filter.FilterIdLow = 0x0000U;
-    filter.FilterMaskIdHigh = (0x600U << 5); // Maska za 0bXXX00XXXXXX (0x100-0x2FF)
-    filter.FilterMaskIdLow = 0x0000U;
-    filter.FilterFIFOAssignment = CAN_RX_FIFO0;
-    filter.FilterActivation = ENABLE;
 
     if (HAL_CAN_ConfigFilter(hcan, &filter) != HAL_OK) {
         return HAL_ERROR;
