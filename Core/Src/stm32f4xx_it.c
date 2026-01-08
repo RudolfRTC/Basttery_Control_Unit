@@ -306,6 +306,10 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
     uint32_t can_id;
     HAL_StatusTypeDef status;
 
+    /* Debug: UART diagnostika za CAN RX */
+    extern UART_HandleTypeDef huart1;
+    char debug_buf[80];
+
     /* MISRA C 2012 Rule 14.4: Explicit NULL check */
     if (hcan == NULL) {
         return;
@@ -324,6 +328,18 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
     } else {
         can_id = rx_header.ExtId;
     }
+
+    /* DEBUG: Print CAN RX message za diagnostiko */
+    if (hcan == &hcan1) {
+        (void)snprintf(debug_buf, sizeof(debug_buf),
+            "[CAN1 RX] ID:0x%03lX DLC:%u Data:%02X %02X %02X %02X\r\n",
+            can_id, rx_header.DLC, rx_data[0], rx_data[1], rx_data[2], rx_data[3]);
+    } else {
+        (void)snprintf(debug_buf, sizeof(debug_buf),
+            "[CAN2 RX] ID:0x%08lX DLC:%u Data:%02X %02X\r\n",
+            can_id, rx_header.DLC, rx_data[0], rx_data[1]);
+    }
+    (void)HAL_UART_Transmit(&huart1, (uint8_t*)debug_buf, (uint16_t)strlen(debug_buf), 10);
 
     /* Route message to appropriate handler */
     if (hcan == &hcan1) {

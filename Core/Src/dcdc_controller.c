@@ -219,6 +219,10 @@ void DCDC_ProcessCANMessage(uint32_t can_id, const uint8_t *data, uint8_t dlc)
         return;
     }
 
+    /* Update connectivity timestamp (za diagnostiko na CAN1) */
+    extern void DCDC_Diag_UpdateConnectivity(uint8_t converter_id);
+    DCDC_Diag_UpdateConnectivity(converter_id);
+
     /* Get base ID (without address) */
     base_id = can_id & 0xFFFFFF00U;
 
