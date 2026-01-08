@@ -24,6 +24,8 @@ static HAL_StatusTypeDef BMU_CAN_SendMessage(BMU_CAN_HandleTypeDef* handle,
                                              uint8_t* data,
                                              uint8_t dlc);
 
+static HAL_StatusTypeDef BMU_CAN_PerformRecovery(CAN_HandleTypeDef* hcan);
+
 /* Public functions ----------------------------------------------------------*/
 
 /**
@@ -347,6 +349,29 @@ HAL_StatusTypeDef BMU_CAN_SendBTTDetailed(BMU_CAN_HandleTypeDef* handle,
 /* Private functions ---------------------------------------------------------*/
 
 /**
+  * @brief  Perform full CAN recovery sequence
+  * @note   Stops CAN, resets errors, reconfigures filter, and restarts
+  */
+static HAL_StatusTypeDef BMU_CAN_PerformRecovery(CAN_HandleTypeDef* hcan)
+{
+    if (hcan == NULL) {
+        return HAL_ERROR;
+    }
+
+    HAL_CAN_Stop(hcan);
+    HAL_CAN_ResetError(hcan);
+    HAL_Delay(10);
+
+    if (BMU_CAN_ConfigureFilter(hcan) != HAL_OK ||
+        HAL_CAN_Start(hcan) != HAL_OK ||
+        HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
+        return HAL_ERROR;
+    }
+
+    return HAL_OK;
+}
+
+/**
   * @brief  Wait for TX mailbox to become available
   * @note   Polls CAN peripheral until at least one TX mailbox is free
   */
@@ -360,43 +385,9 @@ HAL_StatusTypeDef BMU_CAN_WaitTxMailboxFree(BMU_CAN_HandleTypeDef* handle, uint3
 
     // Wait until at least one TX mailbox is free
     while (HAL_CAN_GetTxMailboxesFreeLevel(handle->hcan1) == 0) {
-        // Check for CAN errors (BUS-OFF, ERROR-PASSIVE)
-        uint32_t can_error = HAL_CAN_GetError(handle->hcan1);
-        if (can_error & HAL_CAN_ERROR_BOF) {
-            // BUS-OFF error - need to restart CAN
-            extern UART_HandleTypeDef huart1;
-            const char* msg = "[CAN] BUS-OFF in TX! Restarting...\r\n";
-            HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), 10);
-
-            // Full recovery sequence
-            HAL_CAN_Stop(handle->hcan1);
-            HAL_CAN_ResetError(handle->hcan1);
-            HAL_Delay(10);  // Wait for auto bus-off recovery
-
-            // Reconfigure filter
-            if (BMU_CAN_ConfigureFilter(handle->hcan1) != HAL_OK) {
-                const char* err = "[CAN] Filter config FAILED in TX wait!\r\n";
-                HAL_UART_Transmit(&huart1, (uint8_t*)err, strlen(err), 10);
-                return HAL_ERROR;
-            }
-
-            // Restart
-            if (HAL_CAN_Start(handle->hcan1) != HAL_OK) {
-                const char* err = "[CAN] Restart FAILED in TX wait!\r\n";
-                HAL_UART_Transmit(&huart1, (uint8_t*)err, strlen(err), 10);
-                return HAL_ERROR;
-            }
-
-            if (HAL_CAN_ActivateNotification(handle->hcan1, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
-                const char* err = "[CAN] Notification enable FAILED in TX wait!\r\n";
-                HAL_UART_Transmit(&huart1, (uint8_t*)err, strlen(err), 10);
-                return HAL_ERROR;
-            }
-
-            return HAL_OK;  // Mailbox should be free after restart
+        if (HAL_CAN_GetError(handle->hcan1) & HAL_CAN_ERROR_BOF) {
+            return BMU_CAN_PerformRecovery(handle->hcan1);
         }
-
-        // Check timeout
         if ((HAL_GetTick() - start_tick) > timeout_ms) {
             return HAL_TIMEOUT;
         }
@@ -417,105 +408,22 @@ HAL_StatusTypeDef BMU_CAN_CheckAndRecover(BMU_CAN_HandleTypeDef* handle)
     uint32_t can_error = HAL_CAN_GetError(handle->hcan1);
     HAL_CAN_StateTypeDef can_state = HAL_CAN_GetState(handle->hcan1);
 
-    // Check for BUS-OFF
-    if (can_error & HAL_CAN_ERROR_BOF) {
-        extern UART_HandleTypeDef huart1;
-        const char* msg = "[CAN] BUS-OFF detected! Recovering...\r\n";
-        HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), 10);
-
-        // Recovery sequence
-        HAL_CAN_Stop(handle->hcan1);
-        HAL_CAN_ResetError(handle->hcan1);
-
-        // Wait for auto bus-off recovery (128*11 bit times ~= 3ms @ 500kbps)
-        HAL_Delay(10);
-
-        // Reconfigure filter (may be lost after stop/init)
-        if (BMU_CAN_ConfigureFilter(handle->hcan1) != HAL_OK) {
-            const char* err = "[CAN] Filter config FAILED!\r\n";
-            HAL_UART_Transmit(&huart1, (uint8_t*)err, strlen(err), 10);
-            return HAL_ERROR;
-        }
-
-        // Restart CAN
-        if (HAL_CAN_Start(handle->hcan1) != HAL_OK) {
-            const char* err = "[CAN] Restart FAILED!\r\n";
-            HAL_UART_Transmit(&huart1, (uint8_t*)err, strlen(err), 10);
-            return HAL_ERROR;
-        }
-
-        // Re-enable notifications
-        if (HAL_CAN_ActivateNotification(handle->hcan1, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
-            const char* err = "[CAN] Notification enable FAILED!\r\n";
-            HAL_UART_Transmit(&huart1, (uint8_t*)err, strlen(err), 10);
-            return HAL_ERROR;
-        }
-
-        const char* ok = "[CAN] Recovery complete!\r\n";
-        HAL_UART_Transmit(&huart1, (uint8_t*)ok, strlen(ok), 10);
-
-        return HAL_OK;
+    // BUS-OFF, ERROR, or RESET state - full recovery needed
+    if ((can_error & HAL_CAN_ERROR_BOF) ||
+        can_state == HAL_CAN_STATE_RESET ||
+        can_state == HAL_CAN_STATE_ERROR) {
+        return BMU_CAN_PerformRecovery(handle->hcan1);
     }
 
-    // Check for ERROR-PASSIVE
+    // ERROR-PASSIVE or WARNING - just reset errors
     if (can_error & (HAL_CAN_ERROR_EPV | HAL_CAN_ERROR_EWG)) {
-        // Just reset errors, don't restart
         HAL_CAN_ResetError(handle->hcan1);
     }
 
-    // Check if CAN is in ERROR or RESET state (unexpected)
-    if (can_state == HAL_CAN_STATE_RESET || can_state == HAL_CAN_STATE_ERROR) {
-        extern UART_HandleTypeDef huart1;
-        char msg[60];
-        snprintf(msg, sizeof(msg), "[CAN] ERROR/RESET state 0x%02X! Recovering...\r\n", can_state);
-        HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), 10);
-
-        // Full recovery
-        HAL_CAN_Stop(handle->hcan1);
-        HAL_CAN_ResetError(handle->hcan1);
-        HAL_Delay(10);
-
-        // Reconfigure filter
-        if (BMU_CAN_ConfigureFilter(handle->hcan1) != HAL_OK) {
-            const char* err = "[CAN] Filter config FAILED in state recovery!\r\n";
-            HAL_UART_Transmit(&huart1, (uint8_t*)err, strlen(err), 10);
-            return HAL_ERROR;
-        }
-
-        // Restart
-        if (HAL_CAN_Start(handle->hcan1) != HAL_OK) {
-            const char* err = "[CAN] Restart FAILED in state recovery!\r\n";
-            HAL_UART_Transmit(&huart1, (uint8_t*)err, strlen(err), 10);
-            return HAL_ERROR;
-        }
-
-        if (HAL_CAN_ActivateNotification(handle->hcan1, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
-            const char* err = "[CAN] Notification enable FAILED in state recovery!\r\n";
-            HAL_UART_Transmit(&huart1, (uint8_t*)err, strlen(err), 10);
-            return HAL_ERROR;
-        }
-
-        const char* ok = "[CAN] State recovery complete!\r\n";
-        HAL_UART_Transmit(&huart1, (uint8_t*)ok, strlen(ok), 10);
-    }
-
-    // Check if CAN peripheral is not started (INRQ bit set means init mode)
-    // CAN->MCR bit 0 (INRQ) should be 0 when started
+    // INRQ set - CAN stuck in init mode
     if (handle->hcan1->Instance->MCR & CAN_MCR_INRQ) {
-        extern UART_HandleTypeDef huart1;
-        const char* msg = "[CAN] Not started (INRQ set)! Starting...\r\n";
-        HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), 10);
-
-        // Try to start
-        if (HAL_CAN_Start(handle->hcan1) != HAL_OK) {
-            const char* err = "[CAN] Start FAILED in INRQ recovery!\r\n";
-            HAL_UART_Transmit(&huart1, (uint8_t*)err, strlen(err), 10);
-            return HAL_ERROR;
-        }
-
-        if (HAL_CAN_ActivateNotification(handle->hcan1, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
-            const char* err = "[CAN] Notification enable FAILED in INRQ recovery!\r\n";
-            HAL_UART_Transmit(&huart1, (uint8_t*)err, strlen(err), 10);
+        if (HAL_CAN_Start(handle->hcan1) != HAL_OK ||
+            HAL_CAN_ActivateNotification(handle->hcan1, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
             return HAL_ERROR;
         }
     }
@@ -541,15 +449,10 @@ static HAL_StatusTypeDef BMU_CAN_SendMessage(BMU_CAN_HandleTypeDef* handle,
     }
 
     // Wait for TX mailbox to be free (with timeout)
-    if (BMU_CAN_WaitTxMailboxFree(handle, 10) != HAL_OK) {
+    HAL_StatusTypeDef wait_status = BMU_CAN_WaitTxMailboxFree(handle, 10);
+    if (wait_status != HAL_OK) {
         handle->error_count++;
-        #if 1
-        extern UART_HandleTypeDef huart1;
-        char err_buf[60];
-        (void)snprintf(err_buf, sizeof(err_buf), "[CAN TX] TIMEOUT! No free mailbox\r\n");
-        HAL_UART_Transmit(&huart1, (uint8_t*)err_buf, strlen(err_buf), 100);
-        #endif
-        return HAL_TIMEOUT;
+        return wait_status;
     }
 
     // Configure TX header
