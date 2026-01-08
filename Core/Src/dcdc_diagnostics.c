@@ -16,6 +16,10 @@ extern CAN_HandleTypeDef hcan1;
 static bool g_diag_is_initialized = false;
 static uint32_t g_last_diag_tx_tick = 0U;
 
+/* Connectivity tracking - last RX timestamp for each converter */
+static uint32_t g_conv1_last_rx_tick = 0U;
+static uint32_t g_conv2_last_rx_tick = 0U;
+
 /* Private function prototypes */
 static bool DCDC_Diag_TransmitCAN1(uint32_t can_id, const uint8_t *data, uint8_t dlc);
 
@@ -164,6 +168,7 @@ void DCDC_Diag_PeriodicTask(void)
     /* Send diagnostics every 100ms */
     if (elapsed_ms >= DCDC_DIAG_TX_PERIOD_MS) {
         (void)DCDC_Diag_SendAll();
+        (void)DCDC_Diag_SendConnectivity();  /* Send connectivity status */
         g_last_diag_tx_tick = current_tick;
     }
 }
@@ -365,4 +370,77 @@ static bool DCDC_Diag_TransmitCAN1(uint32_t can_id, const uint8_t *data, uint8_t
     status = HAL_CAN_AddTxMessage(&hcan1, &tx_header, tx_data, &tx_mailbox);
 
     return (status == HAL_OK);
+}
+
+/**
+ * @brief Update last RX timestamp for specified converter
+ * @note Call this from DCDC_ProcessCANMessage when CAN2 message is received
+ */
+void DCDC_Diag_UpdateConnectivity(uint8_t converter_id)
+{
+    uint32_t current_tick;
+
+    current_tick = HAL_GetTick();
+
+    if (converter_id == 0U) {
+        g_conv1_last_rx_tick = current_tick;
+    } else if (converter_id == 1U) {
+        g_conv2_last_rx_tick = current_tick;
+    } else {
+        /* Invalid converter ID */
+        (void)0;
+    }
+}
+
+/**
+ * @brief Send connectivity status message on CAN1
+ * @return true if sent successfully, false otherwise
+ */
+bool DCDC_Diag_SendConnectivity(void)
+{
+    DCDC_Diag_Connectivity_t msg;
+    uint32_t current_tick;
+    uint32_t time_since_conv1_rx;
+    uint32_t time_since_conv2_rx;
+
+    if (g_diag_is_initialized == false) {
+        return false;
+    }
+
+    current_tick = HAL_GetTick();
+
+    /* Calculate time since last RX from each converter */
+    if (g_conv1_last_rx_tick == 0U) {
+        time_since_conv1_rx = 0xFFFFFFFFU;  /* Never received */
+    } else {
+        time_since_conv1_rx = current_tick - g_conv1_last_rx_tick;
+    }
+
+    if (g_conv2_last_rx_tick == 0U) {
+        time_since_conv2_rx = 0xFFFFU;  /* Never received */
+    } else {
+        time_since_conv2_rx = current_tick - g_conv2_last_rx_tick;
+        if (time_since_conv2_rx > 0xFFFFU) {
+            time_since_conv2_rx = 0xFFFFU;  /* Saturate to 16-bit */
+        }
+    }
+
+    /* Determine connectivity status (connected if received within timeout) */
+    if ((g_conv1_last_rx_tick > 0U) && (time_since_conv1_rx < DCDC_CONNECTIVITY_TIMEOUT_MS)) {
+        msg.conv1_connected = 1U;
+    } else {
+        msg.conv1_connected = 0U;
+    }
+
+    if ((g_conv2_last_rx_tick > 0U) && (time_since_conv2_rx < DCDC_CONNECTIVITY_TIMEOUT_MS)) {
+        msg.conv2_connected = 1U;
+    } else {
+        msg.conv2_connected = 0U;
+    }
+
+    msg.conv1_last_rx_ms = time_since_conv1_rx;
+    msg.conv2_last_rx_ms = (uint16_t)time_since_conv2_rx;
+
+    /* Transmit connectivity status on CAN1 */
+    return DCDC_Diag_TransmitCAN1(DCDC_DIAG_CONNECTIVITY, (uint8_t*)&msg, sizeof(msg));
 }

@@ -36,12 +36,17 @@ extern "C" {
 #define DCDC_DIAG_MEASURES_CONV2    0x411U  /* Napetosti in tokovi pretvornika 2 */
 #define DCDC_DIAG_POWER_CONV2       0x412U  /* Moči pretvornika 2 */
 
+#define DCDC_DIAG_CONNECTIVITY      0x500U  /* Connectivity status obe pretvornika */
+
 /* Command values */
 #define DCDC_DIAG_CMD_OFF           0x00U   /* Izklop */
 #define DCDC_DIAG_CMD_ON            0x01U   /* Vklop */
 
 /* Diagnostic transmission period */
 #define DCDC_DIAG_TX_PERIOD_MS      100U    /* Pošiljaj diagnostiko vsakih 100ms */
+
+/* Connectivity timeout - če ni CAN2 sporočil X ms, pretvornik ni povezan */
+#define DCDC_CONNECTIVITY_TIMEOUT_MS 500U   /* 500ms timeout */
 
 /**
  * @brief Command message structure (RX on CAN1)
@@ -97,6 +102,18 @@ typedef struct __attribute__((packed)) {
     uint32_t power_bus2;        /* Bus2 power in Watts */
 } DCDC_Diag_Power_t;
 
+/**
+ * @brief Connectivity status (TX on CAN1)
+ * DLC: 8 bytes
+ * Reports whether DC/DC converters are connected based on CAN2 activity
+ */
+typedef struct __attribute__((packed)) {
+    uint8_t conv1_connected;    /* 0=Not connected, 1=Connected (CAN2 messages received) */
+    uint8_t conv2_connected;    /* 0=Not connected, 1=Connected (CAN2 messages received) */
+    uint32_t conv1_last_rx_ms;  /* Time since last CAN2 message from Conv1 (milliseconds) */
+    uint16_t conv2_last_rx_ms;  /* Time since last CAN2 message from Conv2 (milliseconds) */
+} DCDC_Diag_Connectivity_t;
+
 /* Exported functions */
 
 /**
@@ -145,6 +162,18 @@ bool DCDC_Diag_SendPower(uint8_t converter_id);
  * @return true if all sent successfully, false otherwise
  */
 bool DCDC_Diag_SendAll(void);
+
+/**
+ * @brief Send connectivity status message on CAN1
+ * @return true if sent successfully, false otherwise
+ */
+bool DCDC_Diag_SendConnectivity(void);
+
+/**
+ * @brief Update last RX timestamp for specified converter (called from CAN2 RX)
+ * @param converter_id Converter ID (0 or 1)
+ */
+void DCDC_Diag_UpdateConnectivity(uint8_t converter_id);
 
 #ifdef __cplusplus
 }
