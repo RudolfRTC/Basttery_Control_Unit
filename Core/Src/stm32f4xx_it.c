@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include "dcdc_controller.h"
 #include "dcdc_diagnostics.h"
+#include "bmu_can.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,7 +54,10 @@
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+/* Forward declaration of BMU CAN message processor for ISR */
+extern void BMU_CAN_ProcessRxMessageISR(CAN_HandleTypeDef* hcan,
+                                         CAN_RxHeaderTypeDef* rx_header,
+                                         uint8_t* rx_data);
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -76,8 +80,11 @@ void NMI_Handler(void)
 
   /* USER CODE END NonMaskableInt_IRQn 0 */
   /* USER CODE BEGIN NonMaskableInt_IRQn 1 */
-   while (1)
+  /* MISRA C 2012 Rule 15.6: Infinite loop with explicit condition */
+  for (;;)
   {
+    /* Intentional infinite loop - NMI fault condition */
+    (void)0;
   }
   /* USER CODE END NonMaskableInt_IRQn 1 */
 }
@@ -90,9 +97,12 @@ void HardFault_Handler(void)
   /* USER CODE BEGIN HardFault_IRQn 0 */
 
   /* USER CODE END HardFault_IRQn 0 */
-  while (1)
+  /* MISRA C 2012 Rule 15.6: Infinite loop with explicit condition */
+  for (;;)
   {
     /* USER CODE BEGIN W1_HardFault_IRQn 0 */
+    /* Intentional infinite loop - Hard Fault condition */
+    (void)0;
     /* USER CODE END W1_HardFault_IRQn 0 */
   }
 }
@@ -105,9 +115,12 @@ void MemManage_Handler(void)
   /* USER CODE BEGIN MemoryManagement_IRQn 0 */
 
   /* USER CODE END MemoryManagement_IRQn 0 */
-  while (1)
+  /* MISRA C 2012 Rule 15.6: Infinite loop with explicit condition */
+  for (;;)
   {
     /* USER CODE BEGIN W1_MemoryManagement_IRQn 0 */
+    /* Intentional infinite loop - Memory Management Fault condition */
+    (void)0;
     /* USER CODE END W1_MemoryManagement_IRQn 0 */
   }
 }
@@ -120,9 +133,12 @@ void BusFault_Handler(void)
   /* USER CODE BEGIN BusFault_IRQn 0 */
 
   /* USER CODE END BusFault_IRQn 0 */
-  while (1)
+  /* MISRA C 2012 Rule 15.6: Infinite loop with explicit condition */
+  for (;;)
   {
     /* USER CODE BEGIN W1_BusFault_IRQn 0 */
+    /* Intentional infinite loop - Bus Fault condition */
+    (void)0;
     /* USER CODE END W1_BusFault_IRQn 0 */
   }
 }
@@ -135,9 +151,12 @@ void UsageFault_Handler(void)
   /* USER CODE BEGIN UsageFault_IRQn 0 */
 
   /* USER CODE END UsageFault_IRQn 0 */
-  while (1)
+  /* MISRA C 2012 Rule 15.6: Infinite loop with explicit condition */
+  for (;;)
   {
     /* USER CODE BEGIN W1_UsageFault_IRQn 0 */
+    /* Intentional infinite loop - Usage Fault condition */
+    (void)0;
     /* USER CODE END W1_UsageFault_IRQn 0 */
   }
 }
@@ -280,21 +299,35 @@ void CAN2_TX_IRQHandler(void)
   * @brief  CAN RX FIFO 0 message pending callback
   * @param  hcan: Pointer to CAN_HandleTypeDef structure
   * @retval None
+  * @note   MISRA C 2012 compliant implementation
   */
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
     CAN_RxHeaderTypeDef rx_header;
     uint8_t rx_data[8];
     uint32_t can_id;
+    HAL_StatusTypeDef status;
+
+    /* MISRA C 2012 Rule 14.4: Explicit NULL check */
+    if (hcan == NULL) {
+        return;
+    }
 
     /* Get received message */
-    if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header, rx_data) != HAL_OK) {
+    status = HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header, rx_data);
+    if (status != HAL_OK) {
         return;
     }
 
     /* Extract CAN ID (standard or extended) */
-    can_id = (rx_header.IDE == CAN_ID_STD) ? rx_header.StdId : rx_header.ExtId;
+    /* MISRA C 2012 Rule 14.4: Explicit comparison */
+    if (rx_header.IDE == CAN_ID_STD) {
+        can_id = rx_header.StdId;
+    } else {
+        can_id = rx_header.ExtId;
+    }
 
+    /* Route message to appropriate handler */
     if (hcan == &hcan1) {
         /* CAN1 - Diagnostic interface (commands from external controller) */
         DCDC_Diag_ProcessCommand(can_id, rx_data, rx_header.DLC);
@@ -304,8 +337,14 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
         DCDC_ProcessCANMessage(can_id, rx_data, rx_header.DLC);
     }
     else {
-        /* Unknown CAN interface - ignore */
+        /* MISRA C 2012 Rule 15.7: Non-empty else required */
+        /* Unknown CAN interface - no action required */
+        (void)0; /* Explicit NOP */
     }
+
+    /* Process BMU protocol messages for both CAN1 and CAN2 */
+    /* Pass already-read message to avoid double-read from FIFO */
+    BMU_CAN_ProcessRxMessageISR(hcan, &rx_header, rx_data);
 }
 
 /* USER CODE END 1 */
