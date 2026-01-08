@@ -98,6 +98,29 @@ static void MX_I2C2_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+// ADC konstante
+#define ADC_VREF_UV            3300000UL  // 3.3V v mikrovolti
+#define ADC_BITS               12
+#define ADC_MAX_VALUE          4095UL     // (1 << 12) - 1
+#define ADC_TO_UV(adc_val)     (((adc_val) * ADC_VREF_UV) / ADC_MAX_VALUE)
+
+// Power sense konstante
+#define PWR_SENSE_RESISTOR_MOHM 100      // 0.1 ohm = 100 milliohm
+#define PWR_SENSE_GAIN         50
+#define PWR_VOLTAGE_DIV        5000UL    // Voltage divider
+
+// I2C adresi
+#define TMP1075_I2C_ADDR       (0x48 << 1)
+#define FRAM_I2C_ADDR          (0x50 << 1)
+
+// LEM senzorji
+#define NUM_LEM_SENSORS        10
+#define NUM_ADC_CHANNELS       8
+
+// Timing konstante
+#define MAIN_LOOP_DELAY_MS     100
+#define CAN_TX_TIMEOUT_MS      100
+
 /* USER CODE END 0 */
 
 /**
@@ -108,7 +131,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-  char uart_buf[100];
+  char uart_buf[256];  // Povečan buffer za preprečitev overflow
 
   /* USER CODE END 1 */
 
@@ -143,7 +166,7 @@ int main(void)
   HAL_UART_Transmit(&huart1, msg, sizeof(msg)-1, 100);
 
   // I2C scan za TMP1075
-  if (HAL_I2C_IsDeviceReady(&hi2c2, 0x48 << 1, 3, 100) == HAL_OK) {
+  if (HAL_I2C_IsDeviceReady(&hi2c2, TMP1075_I2C_ADDR, 3, 100) == HAL_OK) {
       uint8_t found[] = "TMP1075 detected at 0x48\r\n";
       HAL_UART_Transmit(&huart1, found, sizeof(found)-1, 100);
   } else {
@@ -152,7 +175,7 @@ int main(void)
   }
 
   // Inicializacija TMP1075
-  HAL_StatusTypeDef tmp_status = TMP1075_Init(&htmp1075, &hi2c2, 0x48);
+  HAL_StatusTypeDef tmp_status = TMP1075_Init(&htmp1075, &hi2c2, TMP1075_I2C_ADDR >> 1);
   if (tmp_status == HAL_OK) {
       uint8_t init_ok[] = "TMP1075 initialized OK\r\n";
       HAL_UART_Transmit(&huart1, init_ok, sizeof(init_ok)-1, 100);
@@ -168,7 +191,7 @@ int main(void)
   }
 
   // I2C scan za FRAM CY15B256J
-  if (HAL_I2C_IsDeviceReady(&hi2c2, 0x50 << 1, 3, 100) == HAL_OK) {
+  if (HAL_I2C_IsDeviceReady(&hi2c2, FRAM_I2C_ADDR, 3, 100) == HAL_OK) {
       uint8_t fram_found[] = "FRAM CY15B256J detected at 0x50\r\n";
       HAL_UART_Transmit(&huart1, fram_found, sizeof(fram_found)-1, 100);
   } else {
@@ -177,7 +200,7 @@ int main(void)
   }
 
   // Inicializacija FRAM
-  HAL_StatusTypeDef fram_status = CY15B256J_Init(&hfram, &hi2c2, 0x50, NULL, 0);
+  HAL_StatusTypeDef fram_status = CY15B256J_Init(&hfram, &hi2c2, FRAM_I2C_ADDR >> 1, NULL, 0);
   if (fram_status == HAL_OK) {
       uint8_t fram_ok[] = "FRAM initialized OK\r\n";
       HAL_UART_Transmit(&huart1, fram_ok, sizeof(fram_ok)-1, 100);
@@ -645,8 +668,8 @@ int main(void)
 	            // Typical: V_adc = (I_load * R_sense * Gain) where R_sense ~0.1 ohm, Gain=50
 	            // I_load = V_adc / (R_sense * Gain)
 	            // For 3.3V ref, 12-bit ADC: V_adc = (adc_value * 3300) / 4095
-	            uint32_t voltage_uV = ((uint32_t)pwr_current_adc * 3300000UL) / 4095UL;
-	            pwr_msg.pwr_current_mA = (uint16_t)(voltage_uV / 5000UL);  // Adjust divisor based on R_sense and gain
+	            uint32_t voltage_uV = ADC_TO_UV(pwr_current_adc);
+	            pwr_msg.pwr_current_mA = (uint16_t)(voltage_uV / PWR_VOLTAGE_DIV);  // R_sense*Gain = 0.1*50 = 5
 
 	            // PWR_VOLTAGE: Use nominal value (no ADC sensing configured)
 	            // Alternative: Could monitor PG_24V flag and return 0 if power fault
@@ -658,6 +681,8 @@ int main(void)
 	            BMU_InputStates_Msg_t input_msg = {0};
 	            input_msg.input_states = 0;
 	            // Preberi vseh 20 digitalnih inputov (IN_1 do IN_20)
+	            // OPOMBA: Za optimizacijo bi lahko uporabili direkten dostop do GPIO IDR register,
+	            // če so vsi pini na istem portu. Trenutna implementacija je generična.
 	            if (HAL_GPIO_ReadPin(IN_1_GPIO_Port, IN_1_Pin)) input_msg.input_states |= (1 << 0);
 	            if (HAL_GPIO_ReadPin(IN_2_GPIO_Port, IN_2_Pin)) input_msg.input_states |= (1 << 1);
 	            if (HAL_GPIO_ReadPin(IN_3_GPIO_Port, IN_3_Pin)) input_msg.input_states |= (1 << 2);
@@ -681,7 +706,7 @@ int main(void)
 	            BMU_CAN_SendInputStates(&hbmucan, &input_msg);
 
 	            // 4. Pošlji LEM Current messages (0x110-0x112) - FIXED
-	            float all_lem_currents[10];
+	            float all_lem_currents[NUM_LEM_SENSORS];
 	            LEM_Config_ReadAllCurrents(all_lem_currents);
 
 	            BMU_LEM_Current_Msg_t lem_msg1 = {0};
