@@ -1,4 +1,5 @@
-Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
+Core/Src/can_diagnostics.o: ../Core/Src/can_diagnostics.c \
+ ../Core/Inc/can_diagnostics.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h \
  ../Core/Inc/stm32f4xx_hal_conf.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h \
@@ -31,13 +32,8 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr_ex.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_spi.h \
- ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h \
- ../Core/Inc/btt6200_4esa.h ../Core/Inc/btt6200_config.h \
- ../Core/Inc/btt6200_4esa.h ../Core/Inc/tmp1075.h ../Core/Inc/cy15b256j.h \
- ../Core/Inc/temp_logger.h ../Core/Inc/cy15b256j.h ../Core/Inc/lem_hoys.h \
- ../Core/Inc/lem_config.h ../Core/Inc/lem_hoys.h ../Core/Inc/bmu_can.h \
- ../Core/Inc/adc_dma.h ../Core/Inc/can_diagnostics.h
-../Core/Inc/main.h:
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h
+../Core/Inc/can_diagnostics.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h:
@@ -71,16 +67,3 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr_ex.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_spi.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h:
-../Core/Inc/btt6200_4esa.h:
-../Core/Inc/btt6200_config.h:
-../Core/Inc/btt6200_4esa.h:
-../Core/Inc/tmp1075.h:
-../Core/Inc/cy15b256j.h:
-../Core/Inc/temp_logger.h:
-../Core/Inc/cy15b256j.h:
-../Core/Inc/lem_hoys.h:
-../Core/Inc/lem_config.h:
-../Core/Inc/lem_hoys.h:
-../Core/Inc/bmu_can.h:
-../Core/Inc/adc_dma.h:
-../Core/Inc/can_diagnostics.h:

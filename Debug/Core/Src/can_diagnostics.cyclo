@@ -1,0 +1,7 @@
+../Drivers/CMSIS/Include/core_cm4.h:1703:26:__NVIC_GetEnableIRQ	2
+../Drivers/CMSIS/Include/core_cm4.h:1741:26:__NVIC_GetPendingIRQ	2
+../Drivers/CMSIS/Include/core_cm4.h:1836:26:__NVIC_GetPriority	2
+../Core/Src/can_diagnostics.c:13:13:DIAG_Print	1
+../Core/Src/can_diagnostics.c:21:6:CAN_RunDiagnostics	16
+../Core/Src/can_diagnostics.c:129:6:CAN_CheckNVIC	5
+../Core/Src/can_diagnostics.c:164:19:CAN_TestLoopback	11

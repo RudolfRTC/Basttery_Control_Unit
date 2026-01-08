@@ -1,0 +1,10 @@
+../Core/Src/adc_dma.c:22:19:ADC_DMA_Init	3
+../Core/Src/adc_dma.c:48:19:ADC_DMA_Start	4
+../Core/Src/adc_dma.c:70:19:ADC_DMA_Stop	3
+../Core/Src/adc_dma.c:82:19:ADC_DMA_GetValue	5
+../Core/Src/adc_dma.c:103:19:ADC_DMA_GetAllValues	4
+../Core/Src/adc_dma.c:119:6:ADC_DMA_IsConversionComplete	3
+../Core/Src/adc_dma.c:131:19:ADC_DMA_ClearFlag	3
+../Core/Src/adc_dma.c:145:6:ADC_DMA_ConvCpltCallback	2
+../Core/Src/adc_dma.c:156:19:ADC_DMA_GetStats	5
+../Core/Src/adc_dma.c:175:13:HAL_ADC_ConvCpltCallback	1

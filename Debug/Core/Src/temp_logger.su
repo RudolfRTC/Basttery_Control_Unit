@@ -1,0 +1,9 @@
+../Core/Src/temp_logger.c:27:19:TempLogger_Init	64	static
+../Core/Src/temp_logger.c:70:19:TempLogger_LogTemperature	48	static
+../Core/Src/temp_logger.c:126:19:TempLogger_GetStats	16	static
+../Core/Src/temp_logger.c:142:19:TempLogger_GetEntry	32	static
+../Core/Src/temp_logger.c:165:19:TempLogger_ResetStats	40	static
+../Core/Src/temp_logger.c:184:10:TempLogger_GetLogCount	40	static
+../Core/Src/temp_logger.c:205:26:TempLogger_WriteEntry	24	static
+../Core/Src/temp_logger.c:220:26:TempLogger_ReadStats	24	static
+../Core/Src/temp_logger.c:237:26:TempLogger_WriteStats	16	static

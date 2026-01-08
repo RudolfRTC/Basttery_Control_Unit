@@ -1,0 +1,19 @@
+Conversion Warnings Log
+
+
+MSG_ID: 272 	MSG_TYPE: S 	MSG_NAME: LEM_Current_1
+	SIG_NAME: LEM1_Current, STATUS: Invalid Max or Min value., ACTION: Value Set to default
+	SIG_NAME: LEM2_Current, STATUS: Invalid Max or Min value., ACTION: Value Set to default
+	SIG_NAME: LEM3_Current, STATUS: Invalid Max or Min value., ACTION: Value Set to default
+	SIG_NAME: LEM4_Current, STATUS: Invalid Max or Min value., ACTION: Value Set to default
+
+MSG_ID: 273 	MSG_TYPE: S 	MSG_NAME: LEM_Current_2
+	SIG_NAME: LEM5_Current, STATUS: Invalid Max or Min value., ACTION: Value Set to default
+	SIG_NAME: LEM6_Current, STATUS: Invalid Max or Min value., ACTION: Value Set to default
+	SIG_NAME: LEM7_Current, STATUS: Invalid Max or Min value., ACTION: Value Set to default
+	SIG_NAME: LEM8_Current, STATUS: Invalid Max or Min value., ACTION: Value Set to default
+
+MSG_ID: 274 	MSG_TYPE: S 	MSG_NAME: LEM_Current_3
+	SIG_NAME: LEM9_Current, STATUS: Invalid Max or Min value., ACTION: Value Set to default
+	SIG_NAME: LEM10_Current, STATUS: Invalid Max or Min value., ACTION: Value Set to default
+BA_DEF_DEF_ " "  : Match not Found in Param List

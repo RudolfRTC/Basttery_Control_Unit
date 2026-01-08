@@ -1,7 +1,7 @@
 ../Core/Src/tmp1075.c:29:19:TMP1075_Init	8
 ../Core/Src/tmp1075.c:77:19:TMP1075_ReadTemperature	5
 ../Core/Src/tmp1075.c:97:19:TMP1075_ReadTemperature_Int	5
-../Core/Src/tmp1075.c:117:19:TMP1075_WriteConfig	6
+../Core/Src/tmp1075.c:117:19:TMP1075_WriteConfig	5
 ../Core/Src/tmp1075.c:139:19:TMP1075_ReadConfig	3
 ../Core/Src/tmp1075.c:162:19:TMP1075_SetLowThreshold	3
 ../Core/Src/tmp1075.c:176:19:TMP1075_SetHighThreshold	3

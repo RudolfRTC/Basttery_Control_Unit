@@ -1,0 +1,654 @@
+VERSION "00B"
+
+
+NS_ : 
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	CAT_DEF_
+	CAT_
+	FILTER
+	BA_DEF_DEF_
+	EV_DATA_
+	ENVVAR_DATA_
+	SGTYPE_
+	SGTYPE_VAL_
+	BA_DEF_SGTYPE_
+	BA_SGTYPE_
+	SIG_TYPE_REF_
+	VAL_TABLE_
+	SIG_GROUP_
+	SIG_VALTYPE_
+	SIGTYPE_VALTYPE_
+	BO_TX_BU_
+	BA_DEF_REL_
+	BA_REL_
+	BA_DEF_DEF_REL_
+	BU_SG_REL_
+	BU_EV_REL_
+	BU_BO_REL_
+	SG_MUL_VAL_
+
+BS_:
+
+BU_: SUPERVISER DCDC_Primary DCDC_Primary_1 DCDC_Primary_2
+
+
+BO_ 2274361344 DCDC_ControlInformation: 4 DCDC_Primary
+ SG_ currentLimit : 16|16@1+ (0.1,0) [0|6553.5] "A"  SUPERVISER
+ SG_ converterMode : 0|8@1+ (1,0) [0|255] ""  SUPERVISER
+ SG_ controlType : 8|8@1+ (1,0) [0|255] ""  SUPERVISER
+
+BO_ 2274361345 DCDC_ControlInformation_1: 4 DCDC_Primary_1
+ SG_ currentLimit : 16|16@1+ (0.1,0) [0|6553.5] "A"  SUPERVISER
+ SG_ converterMode : 0|8@1+ (1,0) [0|255] ""  SUPERVISER
+ SG_ controlType : 8|8@1+ (1,0) [0|255] ""  SUPERVISER
+
+BO_ 2274361346 DCDC_ControlInformation_2: 4 DCDC_Primary_2
+ SG_ currentLimit : 16|16@1+ (0.1,0) [0|6553.5] "A"  SUPERVISER
+ SG_ converterMode : 0|8@1+ (1,0) [0|255] ""  SUPERVISER
+ SG_ controlType : 8|8@1+ (1,0) [0|255] ""  SUPERVISER
+
+
+BO_ 2305818624 DCDC_SettingsModeRequest: 1 SUPERVISER
+ SG_ request : 0|8@1+ (1,0) [0|255] ""  DCDC_Primary
+
+BO_ 2305818625 DCDC_SettingsModeRequest_1: 1 SUPERVISER
+ SG_ request : 0|8@1+ (1,0) [0|255] ""  DCDC_Primary_1
+
+BO_ 2305818626 DCDC_SettingsModeRequest_2: 1 SUPERVISER
+ SG_ request : 0|8@1+ (1,0) [0|255] ""  DCDC_Primary_2
+
+
+BO_ 2242904064 DCDC_ErrorResetRequest: 0 SUPERVISER
+
+BO_ 2242904065 DCDC_ErrorResetRequest_1: 0 SUPERVISER
+
+BO_ 2242904066 DCDC_ErrorResetRequest_2: 0 SUPERVISER
+
+
+BO_ 2284847104 DCDC_ParameterRequest: 7 SUPERVISER
+ SG_ paramValueReq : 24|32@1+ (1,0) [0|4294967295] ""  DCDC_Primary
+ SG_ paramIdReq : 8|16@1+ (1,0) [0|65535] ""  DCDC_Primary
+ SG_ action : 0|8@1+ (1,0) [0|255] ""  DCDC_Primary
+
+BO_ 2284847105 DCDC_ParameterRequest_1: 7 SUPERVISER
+ SG_ paramValueReq : 24|32@1+ (1,0) [0|4294967295] ""  DCDC_Primary_1
+ SG_ paramIdReq : 8|16@1+ (1,0) [0|65535] ""  DCDC_Primary_1
+ SG_ action : 0|8@1+ (1,0) [0|255] ""  DCDC_Primary_1
+
+BO_ 2284847106 DCDC_ParameterRequest_2: 7 SUPERVISER
+ SG_ paramValueReq : 24|32@1+ (1,0) [0|4294967295] ""  DCDC_Primary_2
+ SG_ paramIdReq : 8|16@1+ (1,0) [0|65535] ""  DCDC_Primary_2
+ SG_ action : 0|8@1+ (1,0) [0|255] ""  DCDC_Primary_2
+
+
+BO_ 2190475264 DCDC_InformationRequest: 1 SUPERVISER
+ SG_ requestdInfo : 0|8@1+ (1,0) [0|255] ""  DCDC_Primary
+
+BO_ 2190475265 DCDC_InformationRequest_1: 1 SUPERVISER
+ SG_ requestdInfo : 0|8@1+ (1,0) [0|255] ""  DCDC_Primary_1
+
+BO_ 2190475266 DCDC_InformationRequest_2: 1 SUPERVISER
+ SG_ requestdInfo : 0|8@1+ (1,0) [0|255] ""  DCDC_Primary_2
+
+
+BO_ 2152726528 DCDC_ModeRequest: 2 SUPERVISER
+ SG_ converterModeReq : 0|8@1+ (1,0) [0|255] ""  DCDC_Primary
+ SG_ controlTypeReq : 8|8@1+ (1,0) [0|255] ""  DCDC_Primary
+
+BO_ 2152726529 DCDC_ModeRequest_1: 2 SUPERVISER
+ SG_ converterModeReq : 0|8@1+ (1,0) [0|255] ""  DCDC_Primary_1
+ SG_ controlTypeReq : 8|8@1+ (1,0) [0|255] ""  DCDC_Primary_1
+
+BO_ 2152726530 DCDC_ModeRequest_2: 2 SUPERVISER
+ SG_ converterModeReq : 0|8@1+ (1,0) [0|255] ""  DCDC_Primary_2
+ SG_ controlTypeReq : 8|8@1+ (1,0) [0|255] ""  DCDC_Primary_2
+
+
+BO_ 2148532224 DCDC_ControlRequest: 7 SUPERVISER
+ SG_ currentLimitReq : 40|16@1+ (0.1,0) [0|6553.5] "A"  DCDC_Primary
+ SG_ setpointReq : 8|32@1+ (1,0) [0|12000] ""  DCDC_Primary
+ SG_ startCommand : 0|8@1+ (1,0) [0|1] ""  DCDC_Primary
+
+BO_ 2148532225 DCDC_ControlRequest_1: 7 SUPERVISER
+ SG_ currentLimitReq : 40|16@1+ (0.1,0) [0|6553.5] "A"  DCDC_Primary_1
+ SG_ setpointReq : 8|32@1+ (1,0) [0|12000] ""  DCDC_Primary_1
+ SG_ startCommand : 0|8@1+ (1,0) [0|1] ""  DCDC_Primary_1
+
+BO_ 2148532226 DCDC_ControlRequest_2: 7 SUPERVISER
+ SG_ currentLimitReq : 40|16@1+ (0.1,0) [0|6553.5] "A"  DCDC_Primary_2
+ SG_ setpointReq : 8|32@1+ (1,0) [0|12000] ""  DCDC_Primary_2
+ SG_ startCommand : 0|8@1+ (1,0) [0|1] ""  DCDC_Primary_2
+
+
+BO_ 2295332864 DCDC_ParameterResponse: 7 DCDC_Primary
+ SG_ status : 48|8@1+ (1,0) [0|1] ""  SUPERVISER
+ SG_ paramValue : 16|32@1+ (1,0) [0|4294967295] ""  SUPERVISER
+ SG_ paramId : 0|16@1+ (1,0) [0|65535] ""  SUPERVISER
+
+BO_ 2295332865 DCDC_ParameterResponse_1: 7 DCDC_Primary_1
+ SG_ status : 48|8@1+ (1,0) [0|1] ""  SUPERVISER
+ SG_ paramValue : 16|32@1+ (1,0) [0|4294967295] ""  SUPERVISER
+ SG_ paramId : 0|16@1+ (1,0) [0|65535] ""  SUPERVISER
+
+BO_ 2295332866 DCDC_ParameterResponse_2: 7 DCDC_Primary_2
+ SG_ status : 48|8@1+ (1,0) [0|1] ""  SUPERVISER
+ SG_ paramValue : 16|32@1+ (1,0) [0|4294967295] ""  SUPERVISER
+ SG_ paramId : 0|16@1+ (1,0) [0|65535] ""  SUPERVISER
+
+
+BO_ 2236612608 DCDC_Warnings: 4 DCDC_Primary
+ SG_ warnings : 0|32@1+ (1,0) [0|4294967295] ""  SUPERVISER
+
+BO_ 2236612609 DCDC_Warnings_1: 4 DCDC_Primary_1
+ SG_ warnings : 0|32@1+ (1,0) [0|4294967295] ""  SUPERVISER
+
+BO_ 2236612610 DCDC_Warnings_2: 4 DCDC_Primary_2
+ SG_ warnings : 0|32@1+ (1,0) [0|4294967295] ""  SUPERVISER
+
+
+BO_ 2179989504 DCDC_Errors: 8 DCDC_Primary
+ SG_ functionalErrors : 32|32@1+ (1,0) [0|4294967295] ""  SUPERVISER
+ SG_ criticalErrors : 0|32@1+ (1,0) [0|4294967295] ""  SUPERVISER
+
+BO_ 2179989505 DCDC_Errors_1: 8 DCDC_Primary_1
+ SG_ functionalErrors : 32|32@1+ (1,0) [0|4294967295] ""  SUPERVISER
+ SG_ criticalErrors : 0|32@1+ (1,0) [0|4294967295] ""  SUPERVISER
+
+BO_ 2179989506 DCDC_Errors_2: 8 DCDC_Primary_2
+ SG_ functionalErrors : 32|32@1+ (1,0) [0|4294967295] ""  SUPERVISER
+ SG_ criticalErrors : 0|32@1+ (1,0) [0|4294967295] ""  SUPERVISER
+
+
+BO_ 2263875584 DCDC_RegulationInformation: 6 DCDC_Primary
+ SG_ Reserved : 40|8@1+ (1,0) [0|255] ""  SUPERVISER
+ SG_ setpoint : 8|32@1+ (1,0) [0|4294967295] ""  SUPERVISER
+ SG_ softwareMode : 0|8@1+ (1,0) [0|255] ""  SUPERVISER
+
+BO_ 2263875585 DCDC_RegulationInformation_1: 6 DCDC_Primary_1
+ SG_ Reserved : 40|8@1+ (1,0) [0|255] ""  SUPERVISER
+ SG_ setpoint : 8|32@1+ (1,0) [0|4294967295] ""  SUPERVISER
+ SG_ softwareMode : 0|8@1+ (1,0) [0|255] ""  SUPERVISER
+
+BO_ 2263875586 DCDC_RegulationInformation_2: 6 DCDC_Primary_2
+ SG_ Reserved : 40|8@1+ (1,0) [0|255] ""  SUPERVISER
+ SG_ setpoint : 8|32@1+ (1,0) [0|4294967295] ""  SUPERVISER
+ SG_ softwareMode : 0|8@1+ (1,0) [0|255] ""  SUPERVISER
+
+
+BO_ 2222981120 DCDC_VoltageMeasures: 4 DCDC_Primary
+ SG_ vBus2 : 16|16@1+ (0.1,0) [0|60] "V"  SUPERVISER
+ SG_ vBus1 : 0|16@1+ (0.1,0) [0|1000] "V"  SUPERVISER
+
+BO_ 2222981121 DCDC_VoltageMeasures_1: 4 DCDC_Primary_1
+ SG_ vBus2 : 16|16@1+ (0.1,0) [0|60] "V"  SUPERVISER
+ SG_ vBus1 : 0|16@1+ (0.1,0) [0|1000] "V"  SUPERVISER
+
+BO_ 2222981122 DCDC_VoltageMeasures_2: 4 DCDC_Primary_2
+ SG_ vBus2 : 16|16@1+ (0.1,0) [0|60] "V"  SUPERVISER
+ SG_ vBus1 : 0|16@1+ (0.1,0) [0|1000] "V"  SUPERVISER
+
+
+BO_ 2221932544 DCDC_TemperatureMeasures: 8 DCDC_Primary
+ SG_ TempAmbiant : 56|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+ SG_ TempMaxCooling : 48|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+ SG_ TempMaxMosfetSecondary : 40|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+ SG_ TempMaxSelfBoost : 32|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+ SG_ tempMaxMosfetBoost : 24|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+ SG_ TempMaxMosfetPSFB : 16|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+ SG_ TempMaxBoost : 8|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+ SG_ TempMaxTransfo : 0|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+
+BO_ 2221932545 DCDC_TemperatureMeasures_1: 8 DCDC_Primary_1
+ SG_ TempAmbiant : 56|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+ SG_ TempMaxCooling : 48|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+ SG_ TempMaxMosfetSecondary : 40|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+ SG_ TempMaxSelfBoost : 32|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+ SG_ tempMaxMosfetBoost : 24|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+ SG_ TempMaxMosfetPSFB : 16|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+ SG_ TempMaxBoost : 8|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+ SG_ TempMaxTransfo : 0|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+
+BO_ 2221932546 DCDC_TemperatureMeasures_2: 8 DCDC_Primary_2
+ SG_ TempAmbiant : 56|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+ SG_ TempMaxCooling : 48|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+ SG_ TempMaxMosfetSecondary : 40|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+ SG_ TempMaxSelfBoost : 32|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+ SG_ tempMaxMosfetBoost : 24|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+ SG_ TempMaxMosfetPSFB : 16|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+ SG_ TempMaxBoost : 8|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+ SG_ TempMaxTransfo : 0|8@1+ (1,-50) [-50|205] "degC"  SUPERVISER
+
+
+BO_ 2211446784 DCDC_PowerMeasures: 8 DCDC_Primary
+ SG_ pBus2 : 0|32@1+ (1,0) [0|4294967295] "W"  SUPERVISER
+ SG_ pBus1 : 32|32@1+ (1,0) [0|4294967295] "W"  SUPERVISER
+
+BO_ 2211446785 DCDC_PowerMeasures_1: 8 DCDC_Primary_1
+ SG_ pBus2 : 0|32@1+ (1,0) [0|4294967295] "W"  SUPERVISER
+ SG_ pBus1 : 32|32@1+ (1,0) [0|4294967295] "W"  SUPERVISER
+
+BO_ 2211446786 DCDC_PowerMeasures_2: 8 DCDC_Primary_2
+ SG_ pBus2 : 0|32@1+ (1,0) [0|4294967295] "W"  SUPERVISER
+ SG_ pBus1 : 32|32@1+ (1,0) [0|4294967295] "W"  SUPERVISER
+
+
+BO_ 2200961024 DCDC_CurrentMeasures: 4 DCDC_Primary
+ SG_ iBus2 : 16|16@1+ (0.1,-3276.8) [-250|250] "A"  SUPERVISER
+ SG_ iBus1 : 0|16@1+ (0.1,-3276.8) [-3276.8|3276.7] "A"  SUPERVISER
+
+BO_ 2200961025 DCDC_CurrentMeasures_1: 4 DCDC_Primary_1
+ SG_ iBus2 : 16|16@1+ (0.1,-3276.8) [-250|250] "A"  SUPERVISER
+ SG_ iBus1 : 0|16@1+ (0.1,-3276.8) [-3276.8|3276.7] "A"  SUPERVISER
+
+BO_ 2200961026 DCDC_CurrentMeasures_2: 4 DCDC_Primary_2
+ SG_ iBus2 : 16|16@1+ (0.1,-3276.8) [-250|250] "A"  SUPERVISER
+ SG_ iBus1 : 0|16@1+ (0.1,-3276.8) [-3276.8|3276.7] "A"  SUPERVISER
+
+
+
+
+CM_ BU_ SUPERVISER "Superviser";
+CM_ BU_ DCDC_Primary "DCDC_Converter Primary CAN interface";
+CM_ BU_ DCDC_Primary_1 "DCDC_Converter Primary_1 CAN interface";
+CM_ BU_ DCDC_Primary_2 "DCDC_Converter Primary_2 CAN interface";
+CM_ BO_ 2274361344 "DCDC_Converter Control Information
+CM_ BO_ 2274361345 "DCDC_Converter Control Information
+CM_ BO_ 2274361346 "DCDC_Converter Control Information
+
+This frame is sent by the converter to inform about the actual regulation mode, converter mode, and current limitation.";
+CM_ SG_ 2274361344 currentLimit "DCDC_Converter current limit setpoint";
+CM_ SG_ 2274361345 currentLimit "DCDC_Converter current limit setpoint";
+CM_ SG_ 2274361346 currentLimit "DCDC_Converter current limit setpoint";
+CM_ SG_ 2274361344 converterMode "DCDC_Converter converter mode";
+CM_ SG_ 2274361345 converterMode "DCDC_Converter converter mode";
+CM_ SG_ 2274361346 converterMode "DCDC_Converter converter mode";
+CM_ SG_ 2274361344 controlType "DCDC_Converter regulation mode";
+CM_ SG_ 2274361345 controlType "DCDC_Converter regulation mode";
+CM_ SG_ 2274361346 controlType "DCDC_Converter regulation mode";
+CM_ BO_ 2305818624 "DCDC_Converter settings mode
+CM_ BO_ 2305818625 "DCDC_Converter settings mode
+CM_ BO_ 2305818626 "DCDC_Converter settings mode
+
+This frame is sent to the converter in order to enter/exit settings mode";
+CM_ SG_ 2305818624 request "DCDC_Converter request settings mode";
+CM_ SG_ 2305818625 request "DCDC_Converter request settings mode";
+CM_ SG_ 2305818626 request "DCDC_Converter request settings mode";
+CM_ BO_ 2242904064 "DCDC_Converter Error Reset Request
+CM_ BO_ 2242904065 "DCDC_Converter Error Reset Request
+CM_ BO_ 2242904066 "DCDC_Converter Error Reset Request
+
+This frame is sent to the converter to request a reset of the errors (see DCDC_Errors)";
+CM_ BO_ 2284847104 "DCDC_Converter Paramenter Request
+CM_ BO_ 2284847105 "DCDC_Converter Paramenter Request
+CM_ BO_ 2284847106 "DCDC_Converter Paramenter Request
+
+This frame is sent to converter to request to read/edit a parameter, or to save the parameters modifications into the converters non-volatile memory";
+CM_ SG_ 2284847104 paramValueReq "DCDC_Converter parameter value";
+CM_ SG_ 2284847105 paramValueReq "DCDC_Converter parameter value";
+CM_ SG_ 2284847106 paramValueReq "DCDC_Converter parameter value";
+CM_ SG_ 2284847104 paramIdReq "DCDC_Converter parameter ID";
+CM_ SG_ 2284847105 paramIdReq "DCDC_Converter parameter ID";
+CM_ SG_ 2284847106 paramIdReq "DCDC_Converter parameter ID";
+CM_ SG_ 2284847104 action "DCDC_Converter action request";
+CM_ SG_ 2284847105 action "DCDC_Converter action request";
+CM_ SG_ 2284847106 action "DCDC_Converter action request";
+CM_ BO_ 2190475264 "DCDC_Converter Information Request
+CM_ BO_ 2190475265 "DCDC_Converter Information Request
+CM_ BO_ 2190475266 "DCDC_Converter Information Request
+
+This frame is sent to the converter in to request information about actual converter state (measures, control status, errors, warnings...)";
+CM_ SG_ 2190475264 requestdInfo "DCDC_Converter requested info";
+CM_ SG_ 2190475265 requestdInfo "DCDC_Converter requested info";
+CM_ SG_ 2190475266 requestdInfo "DCDC_Converter requested info";
+CM_ BO_ 2152726528 "DCDC_Converter Mode Request
+CM_ BO_ 2152726529 "DCDC_Converter Mode Request
+CM_ BO_ 2152726530 "DCDC_Converter Mode Request
+
+This frame is sent to the converter in order to set the control type and converter mode ";
+CM_ SG_ 2152726528 converterModeReq "DCDC_Converter converter mode request
+CM_ SG_ 2152726529 converterModeReq "DCDC_Converter converter mode request
+CM_ SG_ 2152726530 converterModeReq "DCDC_Converter converter mode request
+";
+CM_ SG_ 2152726528 controlTypeReq "DCDC_Converter Regulation Mode Request";
+CM_ SG_ 2152726529 controlTypeReq "DCDC_Converter Regulation Mode Request";
+CM_ SG_ 2152726530 controlTypeReq "DCDC_Converter Regulation Mode Request";
+CM_ BO_ 2148532224 "DCDC_Converter Regulation control 
+CM_ BO_ 2148532225 "DCDC_Converter Regulation control 
+CM_ BO_ 2148532226 "DCDC_Converter Regulation control 
+
+This frame is sent as a request to the converter in order to set the setpoint value, and the current limitation if applied (see DCDC_ModeRequest) and the start/stop conversion command.";
+CM_ SG_ 2148532224 currentLimitReq "DCDC_Converter current limit setpoint request";
+CM_ SG_ 2148532225 currentLimitReq "DCDC_Converter current limit setpoint request";
+CM_ SG_ 2148532226 currentLimitReq "DCDC_Converter current limit setpoint request";
+CM_ SG_ 2148532224 setpointReq "DCDC_Converter setpoint request
+CM_ SG_ 2148532225 setpointReq "DCDC_Converter setpoint request
+CM_ SG_ 2148532226 setpointReq "DCDC_Converter setpoint request
+unit: 0.1V/0.1A/1W depending on regulation mode";
+CM_ SG_ 2148532224 startCommand "DCDC_Converter start command";
+CM_ SG_ 2148532225 startCommand "DCDC_Converter start command";
+CM_ SG_ 2148532226 startCommand "DCDC_Converter start command";
+CM_ BO_ 2295332864 "DCDC_Converter Parameter Response
+CM_ BO_ 2295332865 "DCDC_Converter Parameter Response
+CM_ BO_ 2295332866 "DCDC_Converter Parameter Response
+
+This frame is sent as a response to a parameter request (see DCDC_ParameterRequest)";
+CM_ SG_ 2295332864 status "HVHVDCDC parameter status";
+CM_ SG_ 2295332865 status "HVHVDCDC parameter status";
+CM_ SG_ 2295332866 status "HVHVDCDC parameter status";
+CM_ SG_ 2295332864 paramValue "DCDC_Converter parameter value";
+CM_ SG_ 2295332865 paramValue "DCDC_Converter parameter value";
+CM_ SG_ 2295332866 paramValue "DCDC_Converter parameter value";
+CM_ SG_ 2295332864 paramId "DCDC_Converter parameter ID";
+CM_ SG_ 2295332865 paramId "DCDC_Converter parameter ID";
+CM_ SG_ 2295332866 paramId "DCDC_Converter parameter ID";
+CM_ BO_ 2236612608 "DCDC_Converter Warnings
+CM_ BO_ 2236612609 "DCDC_Converter Warnings
+CM_ BO_ 2236612610 "DCDC_Converter Warnings
+
+This frame is sent by the converter to inform about system warnings";
+CM_ SG_ 2236612608 warnings "DCDC_Converter warnings";
+CM_ SG_ 2236612609 warnings "DCDC_Converter warnings";
+CM_ SG_ 2236612610 warnings "DCDC_Converter warnings";
+CM_ BO_ 2179989504 "DCDC_Converter Errors
+CM_ BO_ 2179989505 "DCDC_Converter Errors
+CM_ BO_ 2179989506 "DCDC_Converter Errors
+
+This frame is sent by the converter to inform about DCDC errors status";
+CM_ SG_ 2179989504 functionalErrors "DCDC_Converter fucntional errors ";
+CM_ SG_ 2179989505 functionalErrors "DCDC_Converter fucntional errors ";
+CM_ SG_ 2179989506 functionalErrors "DCDC_Converter fucntional errors ";
+CM_ SG_ 2179989504 criticalErrors "DCDC_Converter critical errors";
+CM_ SG_ 2179989505 criticalErrors "DCDC_Converter critical errors";
+CM_ SG_ 2179989506 criticalErrors "DCDC_Converter critical errors";
+CM_ BO_ 2263875584 "DCDC_Converter Regulation Information
+CM_ BO_ 2263875585 "DCDC_Converter Regulation Information
+CM_ BO_ 2263875586 "DCDC_Converter Regulation Information
+
+This frame is sent by the converter to inform about the actual values of its software state, setpoint, applied conversion limitation";
+CM_ SG_ 2263875584 Reserved "DCDC_Converter limitation type";
+CM_ SG_ 2263875585 Reserved "DCDC_Converter limitation type";
+CM_ SG_ 2263875586 Reserved "DCDC_Converter limitation type";
+CM_ SG_ 2263875584 setpoint "DCDC_Converter setpoint
+CM_ SG_ 2263875585 setpoint "DCDC_Converter setpoint
+CM_ SG_ 2263875586 setpoint "DCDC_Converter setpoint
+unit: 0.1V/0.1A/1W depending on regulation mode";
+CM_ SG_ 2263875584 softwareMode "DCDC_Converter software mode set point";
+CM_ SG_ 2263875585 softwareMode "DCDC_Converter software mode set point";
+CM_ SG_ 2263875586 softwareMode "DCDC_Converter software mode set point";
+CM_ BO_ 2222981120 "DCDC_Converter voltage measures";
+CM_ BO_ 2222981121 "DCDC_Converter voltage measures";
+CM_ BO_ 2222981122 "DCDC_Converter voltage measures";
+CM_ SG_ 2222981120 vBus2 "DCDC_Converter voltage measures PBus2";
+CM_ SG_ 2222981121 vBus2 "DCDC_Converter voltage measures PBus2";
+CM_ SG_ 2222981122 vBus2 "DCDC_Converter voltage measures PBus2";
+CM_ SG_ 2222981120 vBus1 "DCDC_Converter voltage measures PBus1";
+CM_ SG_ 2222981121 vBus1 "DCDC_Converter voltage measures PBus1";
+CM_ SG_ 2222981122 vBus1 "DCDC_Converter voltage measures PBus1";
+CM_ BO_ 2221932544 "DCDC_Converter temperature measures 1
+CM_ BO_ 2221932545 "DCDC_Converter temperature measures 1
+CM_ BO_ 2221932546 "DCDC_Converter temperature measures 1
+
+This frame is sent by the converter to inform about the temperature measures (temperature measures 1 to 8)";
+CM_ SG_ 2221932544 TempAmbiant "DCDC_Converter temperature measure 8";
+CM_ SG_ 2221932545 TempAmbiant "DCDC_Converter temperature measure 8";
+CM_ SG_ 2221932546 TempAmbiant "DCDC_Converter temperature measure 8";
+CM_ SG_ 2221932544 TempMaxCooling "DCDC_Converter temperature measure 7";
+CM_ SG_ 2221932545 TempMaxCooling "DCDC_Converter temperature measure 7";
+CM_ SG_ 2221932546 TempMaxCooling "DCDC_Converter temperature measure 7";
+CM_ SG_ 2221932544 TempMaxMosfetSecondary "DCDC_Converter temperature measure 6";
+CM_ SG_ 2221932545 TempMaxMosfetSecondary "DCDC_Converter temperature measure 6";
+CM_ SG_ 2221932546 TempMaxMosfetSecondary "DCDC_Converter temperature measure 6";
+CM_ SG_ 2221932544 TempMaxSelfBoost "DCDC_Converter temperature measure 5";
+CM_ SG_ 2221932545 TempMaxSelfBoost "DCDC_Converter temperature measure 5";
+CM_ SG_ 2221932546 TempMaxSelfBoost "DCDC_Converter temperature measure 5";
+CM_ SG_ 2221932544 tempMaxMosfetBoost "DCDC_Converter temperature measure 4";
+CM_ SG_ 2221932545 tempMaxMosfetBoost "DCDC_Converter temperature measure 4";
+CM_ SG_ 2221932546 tempMaxMosfetBoost "DCDC_Converter temperature measure 4";
+CM_ SG_ 2221932544 TempMaxMosfetPSFB "DCDC_Converter temperature measure 3";
+CM_ SG_ 2221932545 TempMaxMosfetPSFB "DCDC_Converter temperature measure 3";
+CM_ SG_ 2221932546 TempMaxMosfetPSFB "DCDC_Converter temperature measure 3";
+CM_ SG_ 2221932544 TempMaxBoost "DCDC_Converter temperature measure 2";
+CM_ SG_ 2221932545 TempMaxBoost "DCDC_Converter temperature measure 2";
+CM_ SG_ 2221932546 TempMaxBoost "DCDC_Converter temperature measure 2";
+CM_ SG_ 2221932544 TempMaxTransfo "DCDC_Converter temperature measure 1";
+CM_ SG_ 2221932545 TempMaxTransfo "DCDC_Converter temperature measure 1";
+CM_ SG_ 2221932546 TempMaxTransfo "DCDC_Converter temperature measure 1";
+CM_ BO_ 2211446784 "DCDC_Converter power measures";
+CM_ BO_ 2211446785 "DCDC_Converter power measures";
+CM_ BO_ 2211446786 "DCDC_Converter power measures";
+CM_ SG_ 2211446784 pBus2 "DCDC_Converter power measures PBus2";
+CM_ SG_ 2211446785 pBus2 "DCDC_Converter power measures PBus2";
+CM_ SG_ 2211446786 pBus2 "DCDC_Converter power measures PBus2";
+CM_ SG_ 2211446784 pBus1 "DCDC_Converter power measures PBus1";
+CM_ SG_ 2211446785 pBus1 "DCDC_Converter power measures PBus1";
+CM_ SG_ 2211446786 pBus1 "DCDC_Converter power measures PBus1";
+CM_ BO_ 2200961024 "DCDC_Converter current measures";
+CM_ BO_ 2200961025 "DCDC_Converter current measures";
+CM_ BO_ 2200961026 "DCDC_Converter current measures";
+CM_ SG_ 2200961024 iBus2 "DCDC_Converter current measures PBus1 power board 1";
+CM_ SG_ 2200961025 iBus2 "DCDC_Converter current measures PBus1 power board 1";
+CM_ SG_ 2200961026 iBus2 "DCDC_Converter current measures PBus1 power board 1";
+CM_ SG_ 2200961024 iBus1 "DCDC_Converter current measure PBus1 board 1";
+CM_ SG_ 2200961025 iBus1 "DCDC_Converter current measure PBus1 board 1";
+CM_ SG_ 2200961026 iBus1 "DCDC_Converter current measure PBus1 board 1";
+BA_DEF_ BO_  "VFrameFormat" ENUM  "StandardCAN","ExtendedCAN","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","StandardCAN_FD","ExtendedCAN_FD";
+BA_DEF_ SG_  "State2" STRING ;
+BA_DEF_ SG_  "State1" STRING ;
+BA_DEF_ SG_  "State0" STRING ;
+BA_DEF_ SG_  "Timeout" INT 0 100000;
+BA_DEF_ SG_  "DataType" ENUM  "ASC","BLN","ENM","BCD","SNM","UNM","SFP","PKT";
+BA_DEF_ SG_  "SigLongName" STRING ;
+BA_DEF_ SG_  "VNSigHSLocalIgnitionDelayed" ENUM  "No","Yes";
+BA_DEF_ SG_  "VNSigHSLocalIgnitionOff" ENUM  "No","Yes";
+BA_DEF_ SG_  "VNSigHSLocalIgnitionOn" ENUM  "No","Yes";
+BA_DEF_ SG_  "VNSigHSLocalDiagnostics" ENUM  "No","Yes";
+BA_DEF_ SG_  "GenSigInactiveValue" INT 0 0;
+BA_DEF_ SG_  "GenSigSendType" ENUM  "Cyclic","OnWrite","OnWriteWithRepetition","OnChange","OnChangeWithRepetition","IfActive","IfActiveWithRepetition","NoSigSendType";
+BA_DEF_ BO_  "MsgLongName" STRING ;
+BA_DEF_ BO_  "DiagRequest" ENUM  "No","Yes";
+BA_DEF_ BO_  "DiagResponse" ENUM  "No","Yes";
+BA_DEF_ BO_  "GenMsgCycleTimeFast" INT 0 100000;
+BA_DEF_ BO_  "GenMsgSendType" ENUM  "Cyclic","not_used","not_used","not_used","not_used","Cyclic","not_used","IfActive","NoMsgSendType";
+BA_DEF_ BO_  "GenMsgCycleTime" INT 0 0;
+BA_DEF_ BU_  "NetId" INT 0 63;
+BA_DEF_ BU_  "NodeLongName" STRING ;
+BA_DEF_ BU_  "NmStationAddress" HEX 0 0;
+BA_DEF_  "Manufacturer" ENUM  "GENERIC";
+BA_DEF_  "Version" STRING ;
+BA_DEF_  "BusType" STRING ;
+BA_DEF_  "DBName" STRING ;
+BA_DEF_  "BusSpeed" STRING ;
+BA_DEF_DEF_  "VFrameFormat" "ExtendedCAN_FD";
+BA_DEF_DEF_  "State2" "Description";
+BA_DEF_DEF_  "State1" "Description";
+BA_DEF_DEF_  "State0" "Description";
+BA_DEF_DEF_  "Timeout" 0;
+BA_DEF_DEF_  "DataType" "";
+BA_DEF_DEF_  "SigLongName" "";
+BA_DEF_DEF_  "VNSigHSLocalIgnitionDelayed" "Yes";
+BA_DEF_DEF_  "VNSigHSLocalIgnitionOff" "No";
+BA_DEF_DEF_  "VNSigHSLocalIgnitionOn" "Yes";
+BA_DEF_DEF_  "VNSigHSLocalDiagnostics" "No";
+BA_DEF_DEF_  "GenSigInactiveValue" 0;
+BA_DEF_DEF_  "GenSigSendType" "Cyclic";
+BA_DEF_DEF_  "MsgLongName" "";
+BA_DEF_DEF_  "DiagRequest" "No";
+BA_DEF_DEF_  "DiagResponse" "No";
+BA_DEF_DEF_  "GenMsgCycleTimeFast" 0;
+BA_DEF_DEF_  "GenMsgSendType" "";
+BA_DEF_DEF_  "GenMsgCycleTime" 0;
+BA_DEF_DEF_  "NetId" 0;
+BA_DEF_DEF_  "NodeLongName" "";
+BA_DEF_DEF_  "NmStationAddress" 0;
+BA_DEF_DEF_  "Manufacturer" "GENERIC";
+BA_DEF_DEF_  "Version" "1.00";
+BA_DEF_DEF_  "BusType" "CAN";
+BA_DEF_DEF_  "DBName" "";
+BA_DEF_DEF_  "BusSpeed" "500k";
+BA_ "BusType" "CAN FD";
+BA_ "Manufacturer" 0;
+BA_ "DBName" "HVCAN_Primary";
+BA_ "NmStationAddress" BU_ DCDC_Primary 0;
+BA_ "NmStationAddress" BU_ DCDC_Primary_1 1;
+BA_ "NmStationAddress" BU_ DCDC_Primary_2 2;
+BA_ "GenMsgSendType" BO_ 2274361344 0;
+BA_ "GenMsgSendType" BO_ 2274361345 0;
+BA_ "GenMsgSendType" BO_ 2274361346 0;
+BA_ "GenMsgCycleTime" BO_ 2274361344 20;
+BA_ "GenMsgCycleTime" BO_ 2274361345 20;
+BA_ "GenMsgCycleTime" BO_ 2274361346 20;
+BA_ "VFrameFormat" BO_ 2274361344 1;
+BA_ "VFrameFormat" BO_ 2274361345 1;
+BA_ "VFrameFormat" BO_ 2274361346 1;
+BA_ "GenMsgSendType" BO_ 2305818624 0;
+BA_ "GenMsgSendType" BO_ 2305818625 0;
+BA_ "GenMsgSendType" BO_ 2305818626 0;
+BA_ "VFrameFormat" BO_ 2305818624 1;
+BA_ "VFrameFormat" BO_ 2305818625 1;
+BA_ "VFrameFormat" BO_ 2305818626 1;
+BA_ "GenMsgSendType" BO_ 2242904064 0;
+BA_ "GenMsgSendType" BO_ 2242904065 0;
+BA_ "GenMsgSendType" BO_ 2242904066 0;
+BA_ "VFrameFormat" BO_ 2242904064 1;
+BA_ "VFrameFormat" BO_ 2242904065 1;
+BA_ "VFrameFormat" BO_ 2242904066 1;
+BA_ "GenMsgSendType" BO_ 2284847104 0;
+BA_ "GenMsgSendType" BO_ 2284847105 0;
+BA_ "GenMsgSendType" BO_ 2284847106 0;
+BA_ "VFrameFormat" BO_ 2284847104 1;
+BA_ "VFrameFormat" BO_ 2284847105 1;
+BA_ "VFrameFormat" BO_ 2284847106 1;
+BA_ "GenMsgSendType" BO_ 2190475264 0;
+BA_ "GenMsgSendType" BO_ 2190475265 0;
+BA_ "GenMsgSendType" BO_ 2190475266 0;
+BA_ "VFrameFormat" BO_ 2190475264 1;
+BA_ "VFrameFormat" BO_ 2190475265 1;
+BA_ "VFrameFormat" BO_ 2190475266 1;
+BA_ "GenMsgSendType" BO_ 2152726528 0;
+BA_ "GenMsgSendType" BO_ 2152726529 0;
+BA_ "GenMsgSendType" BO_ 2152726530 0;
+BA_ "VFrameFormat" BO_ 2152726528 1;
+BA_ "VFrameFormat" BO_ 2152726529 1;
+BA_ "VFrameFormat" BO_ 2152726530 1;
+BA_ "GenMsgSendType" BO_ 2148532224 0;
+BA_ "GenMsgSendType" BO_ 2148532225 0;
+BA_ "GenMsgSendType" BO_ 2148532226 0;
+BA_ "GenMsgCycleTime" BO_ 2148532224 20;
+BA_ "GenMsgCycleTime" BO_ 2148532225 20;
+BA_ "GenMsgCycleTime" BO_ 2148532226 20;
+BA_ "VFrameFormat" BO_ 2148532224 1;
+BA_ "VFrameFormat" BO_ 2148532225 1;
+BA_ "VFrameFormat" BO_ 2148532226 1;
+BA_ "GenMsgSendType" BO_ 2295332864 0;
+BA_ "GenMsgSendType" BO_ 2295332865 0;
+BA_ "GenMsgSendType" BO_ 2295332866 0;
+BA_ "GenMsgCycleTime" BO_ 2295332864 0;
+BA_ "GenMsgCycleTime" BO_ 2295332865 0;
+BA_ "GenMsgCycleTime" BO_ 2295332866 0;
+BA_ "VFrameFormat" BO_ 2295332864 1;
+BA_ "VFrameFormat" BO_ 2295332865 1;
+BA_ "VFrameFormat" BO_ 2295332866 1;
+BA_ "GenMsgSendType" BO_ 2236612608 0;
+BA_ "GenMsgSendType" BO_ 2236612609 0;
+BA_ "GenMsgSendType" BO_ 2236612610 0;
+BA_ "GenMsgCycleTime" BO_ 2236612608 20;
+BA_ "GenMsgCycleTime" BO_ 2236612609 20;
+BA_ "GenMsgCycleTime" BO_ 2236612610 20;
+BA_ "VFrameFormat" BO_ 2236612608 1;
+BA_ "VFrameFormat" BO_ 2236612609 1;
+BA_ "VFrameFormat" BO_ 2236612610 1;
+BA_ "GenMsgSendType" BO_ 2179989504 0;
+BA_ "GenMsgSendType" BO_ 2179989505 0;
+BA_ "GenMsgSendType" BO_ 2179989506 0;
+BA_ "GenMsgCycleTime" BO_ 2179989504 20;
+BA_ "GenMsgCycleTime" BO_ 2179989505 20;
+BA_ "GenMsgCycleTime" BO_ 2179989506 20;
+BA_ "VFrameFormat" BO_ 2179989504 1;
+BA_ "VFrameFormat" BO_ 2179989505 1;
+BA_ "VFrameFormat" BO_ 2179989506 1;
+BA_ "GenMsgSendType" BO_ 2263875584 0;
+BA_ "GenMsgSendType" BO_ 2263875585 0;
+BA_ "GenMsgSendType" BO_ 2263875586 0;
+BA_ "GenMsgCycleTime" BO_ 2263875584 20;
+BA_ "GenMsgCycleTime" BO_ 2263875585 20;
+BA_ "GenMsgCycleTime" BO_ 2263875586 20;
+BA_ "VFrameFormat" BO_ 2263875584 1;
+BA_ "VFrameFormat" BO_ 2263875585 1;
+BA_ "VFrameFormat" BO_ 2263875586 1;
+BA_ "GenMsgSendType" BO_ 2222981120 0;
+BA_ "GenMsgSendType" BO_ 2222981121 0;
+BA_ "GenMsgSendType" BO_ 2222981122 0;
+BA_ "GenMsgCycleTime" BO_ 2222981120 20;
+BA_ "GenMsgCycleTime" BO_ 2222981121 20;
+BA_ "GenMsgCycleTime" BO_ 2222981122 20;
+BA_ "VFrameFormat" BO_ 2222981120 1;
+BA_ "VFrameFormat" BO_ 2222981121 1;
+BA_ "VFrameFormat" BO_ 2222981122 1;
+BA_ "GenMsgSendType" BO_ 2221932544 0;
+BA_ "GenMsgSendType" BO_ 2221932545 0;
+BA_ "GenMsgSendType" BO_ 2221932546 0;
+BA_ "GenMsgCycleTime" BO_ 2221932544 20;
+BA_ "GenMsgCycleTime" BO_ 2221932545 20;
+BA_ "GenMsgCycleTime" BO_ 2221932546 20;
+BA_ "VFrameFormat" BO_ 2221932544 1;
+BA_ "VFrameFormat" BO_ 2221932545 1;
+BA_ "VFrameFormat" BO_ 2221932546 1;
+BA_ "GenMsgSendType" BO_ 2211446784 0;
+BA_ "GenMsgSendType" BO_ 2211446785 0;
+BA_ "GenMsgSendType" BO_ 2211446786 0;
+BA_ "GenMsgCycleTime" BO_ 2211446784 20;
+BA_ "GenMsgCycleTime" BO_ 2211446785 20;
+BA_ "GenMsgCycleTime" BO_ 2211446786 20;
+BA_ "VFrameFormat" BO_ 2211446784 1;
+BA_ "VFrameFormat" BO_ 2211446785 1;
+BA_ "VFrameFormat" BO_ 2211446786 1;
+BA_ "GenMsgSendType" BO_ 2200961024 0;
+BA_ "GenMsgSendType" BO_ 2200961025 0;
+BA_ "GenMsgSendType" BO_ 2200961026 0;
+BA_ "GenMsgCycleTime" BO_ 2200961024 20;
+BA_ "GenMsgCycleTime" BO_ 2200961025 20;
+BA_ "GenMsgCycleTime" BO_ 2200961026 20;
+BA_ "VFrameFormat" BO_ 2200961024 1;
+BA_ "VFrameFormat" BO_ 2200961025 1;
+BA_ "VFrameFormat" BO_ 2200961026 1;
+VAL_ 2274361344 converterMode 3 "Bidirectional" 2 "Bus2ToBus1" 1 "Bus1ToBus2" 0 "notSet" ;
+VAL_ 2274361345 converterMode 3 "Bidirectional" 2 "Bus2ToBus1" 1 "Bus1ToBus2" 0 "notSet" ;
+VAL_ 2274361346 converterMode 3 "Bidirectional" 2 "Bus2ToBus1" 1 "Bus1ToBus2" 0 "notSet" ;
+VAL_ 2274361344 controlType 3 "iBus2" 4 "iBus1" 7 "vBus2ILim" 8 "vBus1ILim" 1 "vBus2" 2 "vBus1" 5 "pBus2" 6 "pBus1" 0 "notSet" ;
+VAL_ 2274361345 controlType 3 "iBus2" 4 "iBus1" 7 "vBus2ILim" 8 "vBus1ILim" 1 "vBus2" 2 "vBus1" 5 "pBus2" 6 "pBus1" 0 "notSet" ;
+VAL_ 2274361346 controlType 3 "iBus2" 4 "iBus1" 7 "vBus2ILim" 8 "vBus1ILim" 1 "vBus2" 2 "vBus1" 5 "pBus2" 6 "pBus1" 0 "notSet" ;
+VAL_ 2305818624 request 1 "enterSettingsMode" 0 "exitSettingsMode" ;
+VAL_ 2305818625 request 1 "enterSettingsMode" 0 "exitSettingsMode" ;
+VAL_ 2305818626 request 1 "enterSettingsMode" 0 "exitSettingsMode" ;
+VAL_ 2284847104 action 3 "save" 2 "update" 1 "read" 0 "noAction" ;
+VAL_ 2284847105 action 3 "save" 2 "update" 1 "read" 0 "noAction" ;
+VAL_ 2284847106 action 3 "save" 2 "update" 1 "read" 0 "noAction" ;
+VAL_ 2190475264 requestdInfo 9 "controlInformation" 8 "regulationInformation" 6 "temperatureMeasures" 5 "voltageMeasures" 4 "powerMeasures" 3 "currentMeasures" 2 "warnings" 1 "errors" ;
+VAL_ 2190475265 requestdInfo 9 "controlInformation" 8 "regulationInformation" 6 "temperatureMeasures" 5 "voltageMeasures" 4 "powerMeasures" 3 "currentMeasures" 2 "warnings" 1 "errors" ;
+VAL_ 2190475266 requestdInfo 9 "controlInformation" 8 "regulationInformation" 6 "temperatureMeasures" 5 "voltageMeasures" 4 "powerMeasures" 3 "currentMeasures" 2 "warnings" 1 "errors" ;
+VAL_ 2152726528 converterModeReq 3 "Bidirectional" 2 "Bus2ToBus1" 1 "Bus1ToBus2" 0 "notSet" ;
+VAL_ 2152726529 converterModeReq 3 "Bidirectional" 2 "Bus2ToBus1" 1 "Bus1ToBus2" 0 "notSet" ;
+VAL_ 2152726530 converterModeReq 3 "Bidirectional" 2 "Bus2ToBus1" 1 "Bus1ToBus2" 0 "notSet" ;
+VAL_ 2152726528 controlTypeReq 3 "iBus2" 4 "iBus1" 7 "vBus2ILim" 8 "vBus1ILim" 1 "vBus2" 2 "vBus1" 5 "pBus2" 6 "pBus1" 0 "notSet" ;
+VAL_ 2152726529 controlTypeReq 3 "iBus2" 4 "iBus1" 7 "vBus2ILim" 8 "vBus1ILim" 1 "vBus2" 2 "vBus1" 5 "pBus2" 6 "pBus1" 0 "notSet" ;
+VAL_ 2152726530 controlTypeReq 3 "iBus2" 4 "iBus1" 7 "vBus2ILim" 8 "vBus1ILim" 1 "vBus2" 2 "vBus1" 5 "pBus2" 6 "pBus1" 0 "notSet" ;
+VAL_ 2295332864 status 1 "Success" 0 "Failure" ;
+VAL_ 2295332865 status 1 "Success" 0 "Failure" ;
+VAL_ 2295332866 status 1 "Success" 0 "Failure" ;
+VAL_ 2236612608 warnings 0 "noWarning" 1 "highOutCoolantTemp" 2 "highInCoolantTemp" 4 "highAmbientTemp" 8 "highMosfetTemp" 16 "highTransformerTemp" 32 "highSelfTemp" 64 "highCoolantDeltaTemp" 128 "setPointUnreachableTooLow" 256 "setPointUnreachableTooHigh" 512 "controlTypeChangeNotAllowed" 1024 "backupApplicationStarted" 2048 "backupParametersLoaded" ;
+VAL_ 2236612609 warnings 0 "noWarning" 1 "highOutCoolantTemp" 2 "highInCoolantTemp" 4 "highAmbientTemp" 8 "highMosfetTemp" 16 "highTransformerTemp" 32 "highSelfTemp" 64 "highCoolantDeltaTemp" 128 "setPointUnreachableTooLow" 256 "setPointUnreachableTooHigh" 512 "controlTypeChangeNotAllowed" 1024 "backupApplicationStarted" 2048 "backupParametersLoaded" ;
+VAL_ 2236612610 warnings 0 "noWarning" 1 "highOutCoolantTemp" 2 "highInCoolantTemp" 4 "highAmbientTemp" 8 "highMosfetTemp" 16 "highTransformerTemp" 32 "highSelfTemp" 64 "highCoolantDeltaTemp" 128 "setPointUnreachableTooLow" 256 "setPointUnreachableTooHigh" 512 "controlTypeChangeNotAllowed" 1024 "backupApplicationStarted" 2048 "backupParametersLoaded" ;
+VAL_ 2179989504 functionalErrors 0 "noError" 1 "uBus1Min" 2 "uBus1Max" 4 "uBus2Min" 8 "uBus2Max" 16 "iBus2Leg1Max" 32 "iBus2Leg2Max" 64 "outCoolantTempMinCritical" 128 "outCoolantTempMaxCritical" 256 "inCoolantTempMinCritical" 512 "inCoolantTempMaxCritical" 1024 "ambientTempMinCritical" 2048 "ambientTempMaxCritical" 4096 "mosfetTempMaxCritical" 8192 "transformerTempMaxCritical" 16384 "selfTempMaxCritical" 32768 "coolantDeltaTempMaxCritical" 65536 "comIsLost" 131072 "unknownControlMode" 262144 "unknownControlType" 524288 "incompatibleCtrlModeType" 1048576 "controlLoopNotSet" 2097152 "powerLimitReached" 4194304 "inoperationalTemperatureSensor" ;
+VAL_ 2179989505 functionalErrors 0 "noError" 1 "uBus1Min" 2 "uBus1Max" 4 "uBus2Min" 8 "uBus2Max" 16 "iBus2Leg1Max" 32 "iBus2Leg2Max" 64 "outCoolantTempMinCritical" 128 "outCoolantTempMaxCritical" 256 "inCoolantTempMinCritical" 512 "inCoolantTempMaxCritical" 1024 "ambientTempMinCritical" 2048 "ambientTempMaxCritical" 4096 "mosfetTempMaxCritical" 8192 "transformerTempMaxCritical" 16384 "selfTempMaxCritical" 32768 "coolantDeltaTempMaxCritical" 65536 "comIsLost" 131072 "unknownControlMode" 262144 "unknownControlType" 524288 "incompatibleCtrlModeType" 1048576 "controlLoopNotSet" 2097152 "powerLimitReached" 4194304 "inoperationalTemperatureSensor" ;
+VAL_ 2179989506 functionalErrors 0 "noError" 1 "uBus1Min" 2 "uBus1Max" 4 "uBus2Min" 8 "uBus2Max" 16 "iBus2Leg1Max" 32 "iBus2Leg2Max" 64 "outCoolantTempMinCritical" 128 "outCoolantTempMaxCritical" 256 "inCoolantTempMinCritical" 512 "inCoolantTempMaxCritical" 1024 "ambientTempMinCritical" 2048 "ambientTempMaxCritical" 4096 "mosfetTempMaxCritical" 8192 "transformerTempMaxCritical" 16384 "selfTempMaxCritical" 32768 "coolantDeltaTempMaxCritical" 65536 "comIsLost" 131072 "unknownControlMode" 262144 "unknownControlType" 524288 "incompatibleCtrlModeType" 1048576 "controlLoopNotSet" 2097152 "powerLimitReached" 4194304 "inoperationalTemperatureSensor" ;
+VAL_ 2179989504 criticalErrors 65536 "uBusAuxMaxCritical" 0 "noError" 1 "uBus1MaxCritical" 2 "uBus2MaxCritical" 4 "iBus1Leg1MaxCritical" 8 "iBus1Leg2MaxCritical" 16 "iBus2Leg1MaxCritical" 32 "iBus2Leg2MaxCritical" 64 "parameters" 128 "powerMap" 256 "fpgaLost" 512 "mcuClockUnsync" 1024 "fpgaClockUnsync" 2048 "servicePowerSupplyLostMcu" 4096 "servicePowerSupplyLostFpga" 8192 "mosfetDriverFault" 16384 "inoperationalCurrentSensor" 32768 "inoperationalVoltageSensor" ;
+VAL_ 2179989505 criticalErrors 65536 "uBusAuxMaxCritical" 0 "noError" 1 "uBus1MaxCritical" 2 "uBus2MaxCritical" 4 "iBus1Leg1MaxCritical" 8 "iBus1Leg2MaxCritical" 16 "iBus2Leg1MaxCritical" 32 "iBus2Leg2MaxCritical" 64 "parameters" 128 "powerMap" 256 "fpgaLost" 512 "mcuClockUnsync" 1024 "fpgaClockUnsync" 2048 "servicePowerSupplyLostMcu" 4096 "servicePowerSupplyLostFpga" 8192 "mosfetDriverFault" 16384 "inoperationalCurrentSensor" 32768 "inoperationalVoltageSensor" ;
+VAL_ 2179989506 criticalErrors 65536 "uBusAuxMaxCritical" 0 "noError" 1 "uBus1MaxCritical" 2 "uBus2MaxCritical" 4 "iBus1Leg1MaxCritical" 8 "iBus1Leg2MaxCritical" 16 "iBus2Leg1MaxCritical" 32 "iBus2Leg2MaxCritical" 64 "parameters" 128 "powerMap" 256 "fpgaLost" 512 "mcuClockUnsync" 1024 "fpgaClockUnsync" 2048 "servicePowerSupplyLostMcu" 4096 "servicePowerSupplyLostFpga" 8192 "mosfetDriverFault" 16384 "inoperationalCurrentSensor" 32768 "inoperationalVoltageSensor" ;
+VAL_ 2263875584 softwareMode 5 "maintenance" 4 "settings" 3 "powerdown" 2 "running" 1 "standby" 0 "emergency" ;
+VAL_ 2263875585 softwareMode 5 "maintenance" 4 "settings" 3 "powerdown" 2 "running" 1 "standby" 0 "emergency" ;
+VAL_ 2263875586 softwareMode 5 "maintenance" 4 "settings" 3 "powerdown" 2 "running" 1 "standby" 0 "emergency" ;
+
