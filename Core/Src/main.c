@@ -236,6 +236,20 @@ int main(void)
   (void)snprintf(uart_buf, sizeof(uart_buf), "CAN1 State before init: 0x%02X\r\n", hcan1.State);
   HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 
+  /* TESTING MODE: Set to 1 to enable SILENT mode (TX without ACK for solo testing) */
+  #if 0
+  // Switch to SILENT mode for testing without other CAN nodes
+  uint8_t silent_msg[] = "Switching CAN to SILENT mode (TX without ACK)...\r\n";
+  HAL_UART_Transmit(&huart1, silent_msg, sizeof(silent_msg)-1, 100);
+
+  HAL_CAN_Stop(&hcan1);
+  hcan1.Init.Mode = CAN_MODE_SILENT;  // SILENT mode: TX without ACK
+  if (HAL_CAN_Init(&hcan1) != HAL_OK) {
+      uint8_t err[] = "Failed to switch to SILENT mode!\r\n";
+      HAL_UART_Transmit(&huart1, err, sizeof(err)-1, 100);
+  }
+  #endif
+
   if (BMU_CAN_Init(&hbmucan, &hcan1, &hcan2) == HAL_OK) {
       uint8_t can_ok[] = "CAN bus initialized OK (500 kbps)\r\n";
       HAL_UART_Transmit(&huart1, can_ok, sizeof(can_ok)-1, 100);
@@ -379,11 +393,17 @@ int main(void)
 	  }
 
 	  // ========== CAN Bus Data Transmission ==========
+	  // Check and recover from CAN errors (BUS-OFF, etc.)
+	  if (hbmucan.is_initialized) {
+	      BMU_CAN_CheckAndRecover(&hbmucan);
+	  }
+
 	  // Debug: Check CAN state before TX (EVERY iteration for debugging)
 	  HAL_CAN_StateTypeDef can_state = HAL_CAN_GetState(&hcan1);
 	  uint32_t free_mailboxes = HAL_CAN_GetTxMailboxesFreeLevel(&hcan1);
-	  (void)snprintf(uart_buf, sizeof(uart_buf), "[CAN] Init:%d State:0x%02X FreeMB:%lu\r\n",
-	                hbmucan.is_initialized, can_state, free_mailboxes);
+	  uint32_t can_error = HAL_CAN_GetError(&hcan1);
+	  (void)snprintf(uart_buf, sizeof(uart_buf), "[CAN] Init:%d State:0x%02X FreeMB:%lu Error:0x%08lX\r\n",
+	                hbmucan.is_initialized, can_state, free_mailboxes, can_error);
 	  HAL_UART_Transmit(&huart1, (uint8_t*)uart_buf, strlen(uart_buf), 100);
 
 	  if (hbmucan.is_initialized) {

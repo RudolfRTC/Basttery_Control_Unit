@@ -360,10 +360,76 @@ HAL_StatusTypeDef BMU_CAN_WaitTxMailboxFree(BMU_CAN_HandleTypeDef* handle, uint3
 
     // Wait until at least one TX mailbox is free
     while (HAL_CAN_GetTxMailboxesFreeLevel(handle->hcan1) == 0) {
+        // Check for CAN errors (BUS-OFF, ERROR-PASSIVE)
+        uint32_t can_error = HAL_CAN_GetError(handle->hcan1);
+        if (can_error & HAL_CAN_ERROR_BOF) {
+            // BUS-OFF error - need to restart CAN
+            extern UART_HandleTypeDef huart1;
+            const char* msg = "[CAN] BUS-OFF! Restarting...\r\n";
+            HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), 10);
+
+            // Reset CAN
+            HAL_CAN_Stop(handle->hcan1);
+            HAL_CAN_ResetError(handle->hcan1);
+            HAL_CAN_Start(handle->hcan1);
+            HAL_CAN_ActivateNotification(handle->hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
+
+            return HAL_OK;  // Mailbox should be free after restart
+        }
+
         // Check timeout
         if ((HAL_GetTick() - start_tick) > timeout_ms) {
             return HAL_TIMEOUT;
         }
+    }
+
+    return HAL_OK;
+}
+
+/**
+  * @brief  Check CAN error state and recover if needed
+  */
+HAL_StatusTypeDef BMU_CAN_CheckAndRecover(BMU_CAN_HandleTypeDef* handle)
+{
+    if (handle == NULL || !handle->is_initialized) {
+        return HAL_ERROR;
+    }
+
+    uint32_t can_error = HAL_CAN_GetError(handle->hcan1);
+    HAL_CAN_StateTypeDef can_state = HAL_CAN_GetState(handle->hcan1);
+
+    // Check for BUS-OFF
+    if (can_error & HAL_CAN_ERROR_BOF) {
+        extern UART_HandleTypeDef huart1;
+        const char* msg = "[CAN] BUS-OFF detected! Recovering...\r\n";
+        HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), 10);
+
+        // Recovery sequence
+        HAL_CAN_Stop(handle->hcan1);
+        HAL_CAN_ResetError(handle->hcan1);
+        HAL_Delay(10);  // Short delay
+        HAL_CAN_Start(handle->hcan1);
+        HAL_CAN_ActivateNotification(handle->hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
+
+        return HAL_OK;
+    }
+
+    // Check for ERROR-PASSIVE
+    if (can_error & (HAL_CAN_ERROR_EPV | HAL_CAN_ERROR_EWG)) {
+        // Just reset errors, don't restart
+        HAL_CAN_ResetError(handle->hcan1);
+    }
+
+    // Check if CAN stopped unexpectedly
+    if (can_state != HAL_CAN_STATE_LISTENING && can_state != HAL_CAN_STATE_READY) {
+        extern UART_HandleTypeDef huart1;
+        char msg[60];
+        snprintf(msg, sizeof(msg), "[CAN] Unexpected state 0x%02X! Restarting...\r\n", can_state);
+        HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), 10);
+
+        HAL_CAN_Stop(handle->hcan1);
+        HAL_CAN_Start(handle->hcan1);
+        HAL_CAN_ActivateNotification(handle->hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
     }
 
     return HAL_OK;

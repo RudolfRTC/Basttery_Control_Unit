@@ -411,6 +411,13 @@ void BMU_CAN_RxCallback(CAN_HandleTypeDef* hcan);
   */
 HAL_StatusTypeDef BMU_CAN_WaitTxMailboxFree(BMU_CAN_HandleTypeDef* handle, uint32_t timeout_ms);
 
+/**
+  * @brief  Check CAN error state and recover if needed
+  * @param  handle: Pointer na BMU_CAN_HandleTypeDef
+  * @retval HAL status
+  */
+HAL_StatusTypeDef BMU_CAN_CheckAndRecover(BMU_CAN_HandleTypeDef* handle);
+
 #ifdef __cplusplus
 }
 #endif
