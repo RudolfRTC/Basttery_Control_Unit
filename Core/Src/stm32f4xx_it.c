@@ -304,45 +304,34 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
     CAN_RxHeaderTypeDef rx_header;
     uint8_t rx_data[8];
     uint32_t can_id;
-    HAL_StatusTypeDef status;
 
-    /* MISRA C 2012 Rule 14.4: Explicit NULL check */
     if (hcan == NULL) {
         return;
     }
 
-    /* Get received message */
-    status = HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header, rx_data);
-    if (status != HAL_OK) {
-        return;
-    }
+    /* Read ALL messages from FIFO to prevent overflow */
+    while (HAL_CAN_GetRxFifoFillLevel(hcan, CAN_RX_FIFO0) > 0U) {
+        if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header, rx_data) != HAL_OK) {
+            break;
+        }
 
-    /* Extract CAN ID (standard or extended) */
-    /* MISRA C 2012 Rule 14.4: Explicit comparison */
-    if (rx_header.IDE == CAN_ID_STD) {
-        can_id = rx_header.StdId;
-    } else {
-        can_id = rx_header.ExtId;
-    }
+        /* Extract CAN ID */
+        if (rx_header.IDE == CAN_ID_STD) {
+            can_id = rx_header.StdId;
+        } else {
+            can_id = rx_header.ExtId;
+        }
 
-    /* Route message to appropriate handler */
-    if (hcan == &hcan1) {
-        /* CAN1 - Diagnostic interface (commands from external controller) */
-        DCDC_Diag_ProcessCommand(can_id, rx_data, rx_header.DLC);
-    }
-    else if (hcan == &hcan2) {
-        /* CAN2 - DC/DC converter feedback messages */
-        DCDC_ProcessCANMessage(can_id, rx_data, rx_header.DLC);
-    }
-    else {
-        /* MISRA C 2012 Rule 15.7: Non-empty else required */
-        /* Unknown CAN interface - no action required */
-        (void)0; /* Explicit NOP */
-    }
+        /* Route message */
+        if (hcan == &hcan1) {
+            DCDC_Diag_ProcessCommand(can_id, rx_data, rx_header.DLC);
+        } else if (hcan == &hcan2) {
+            DCDC_ProcessCANMessage(can_id, rx_data, rx_header.DLC);
+        }
 
-    /* Process BMU protocol messages for both CAN1 and CAN2 */
-    /* Pass already-read message to avoid double-read from FIFO */
-    BMU_CAN_ProcessRxMessageISR(hcan, &rx_header, rx_data);
+        /* Process BMU protocol */
+        BMU_CAN_ProcessRxMessageISR(hcan, &rx_header, rx_data);
+    }
 }
 
 /* USER CODE END 1 */
