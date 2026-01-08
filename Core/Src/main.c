@@ -1144,14 +1144,10 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-/**
-  * @brief  CAN RX FIFO 0 message pending callback
-  */
-void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef* hcan)
-{
-    // Call BMU CAN RX handler
-    BMU_CAN_RxCallback(hcan);
-}
+/* NOTE: HAL_CAN_RxFifo0MsgPendingCallback is now defined in stm32f4xx_it.c
+ * It handles both DCDC and BMU protocols for CAN1 and CAN2 interrupts.
+ * DO NOT duplicate this function here!
+ */
 
 /* USER CODE END 4 */
 
